@@ -1,6 +1,8 @@
 /**
  * 右上角的「显示」开关列：帧率显示、伤害数字显示。
  *
+ * （原来还有第三个「聊天面板」开关，已挪去 `ChatBoxUI` 面板右边缘那个箭头上了。）
+ *
  * 结构与 `UnitBloodToggleUI` **逐字对齐**（单例 + `created` 守卫 + `TOGGLES` 规格数组 +
  * `Button.createWithPreset` + 文案配色刷新），唯一区别是这些开关不控制 frame 树的增删，
  * 所以点击后**立即**生效，不需要那个 0.01s 的延迟定时器。
@@ -77,6 +79,10 @@ const TOGGLES: DisplayToggleSpec[] = [
     isOn: () => DamageNumberDisplay.isEnabled(),
     toggle: () => DamageNumberDisplay.setEnabled(!DamageNumberDisplay.isEnabled()),
   },
+  // 这里曾经有第三个「聊天面板」开关，已**移走** ——
+  // 用户要求收起/展开的按钮不要放右上角，改成贴聊天面板右边缘的那个箭头（`←` / `→`）。
+  // 见 `ChatBoxUI` 文件头的「收起 / 展开」一节。
+  // ⚠️ 别再往这里加回来，否则同一件事会有两个入口，状态还容易不同步。
 ];
 
 export class DisplayToggleUI {

@@ -25,8 +25,30 @@ export class ScreenCoordinates {
    * @returns WC3相对坐标 {x, y}
    */
   public static pixelToWC3(
-    pixelX: number, 
-    pixelY: number, 
+    pixelX: number,
+    pixelY: number,
+    origin: string = ScreenCoordinates.ORIGIN_TOP_LEFT
+  ): { x: number; y: number } {
+    const raw = ScreenCoordinates.pixelToWC3Unclamped(pixelX, pixelY, origin);
+    return {
+      x: Math.max(0, Math.min(ScreenCoordinates.WC3_SCREEN_WIDTH, raw.x)),
+      y: Math.max(0, Math.min(ScreenCoordinates.WC3_SCREEN_HEIGHT, raw.y))
+    };
+  }
+
+  /**
+   * 与 `pixelToWC3` 完全相同，**只差最后那一次屏幕内钳制** —— 允许算到屏幕外
+   * （坐标为负、或超过 0.8 / 0.6）。
+   *
+   * 什么时候需要它：**「把整个面板推出屏幕」这类动画**。钳制是防御性的
+   * （挡住算错的坐标把 frame 甩到看不见的地方），但收起动画要的正是「看不见的地方」——
+   * 面板左边界要从 12 一路减到 −480，一钳就全停在 0，整个动画一帧都动不了。
+   *
+   * 常规 UI 一律继续走 `pixelToWC3`，不要顺手改用这个。
+   */
+  public static pixelToWC3Unclamped(
+    pixelX: number,
+    pixelY: number,
     origin: string = ScreenCoordinates.ORIGIN_TOP_LEFT
   ): { x: number; y: number } {
     let wc3X: number;
@@ -57,10 +79,7 @@ export class ScreenCoordinates {
         throw new Error(`Unsupported origin type: ${origin}`);
     }
 
-    return {
-      x: Math.max(0, Math.min(ScreenCoordinates.WC3_SCREEN_WIDTH, wc3X)),
-      y: Math.max(0, Math.min(ScreenCoordinates.WC3_SCREEN_HEIGHT, wc3Y))
-    };
+    return { x: wc3X, y: wc3Y };
   }
 
   /**

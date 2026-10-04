@@ -29,7 +29,27 @@ export class CameraControl {
   private static gameStartXAngle: number = GetCameraField(ConvertCameraField(2));
 
   private static unitBloodScale: number = 1.0;
-  
+
+  /**
+   * 「这一格滚轮让给别人」的判定，由 `ChatBoxUI` 在 `create()` 时登记。
+   *
+   * ⚠️ **不要改回直接 `import { ChatBoxUI }`。** 那条边看着无害，实际是把一个很大的
+   * UI 模块拉进了本文件的加载链 —— 代价是实测出来的：加之前 6 次崩溃全在
+   * `ChatBoxUI.lua`（最靠后一次是 `:963`），加了之后崩点立刻反向挪到
+   * `CameraControl.lua:93`。KKWE 的 Lua 5.3 解析器有一道 200 的
+   * C-level 上限（见 memory `wc3-lua53-ccalls-limit`），加载链越长越容易撞上。
+   *
+   * 反向依赖（`ChatBoxUI` → `CameraControl`）没这个问题：**大的拉小的不加深链路**，
+   * 而且这里本来就是个回调，用不着静态引用。
+   */
+  private static wheelBlocker: (() => boolean) | null = null;
+
+  /** 登记滚轮放行判定。传 `null` 取消。由 `ChatBoxUI` 调用 */
+  public static setWheelBlocker(fn: (() => boolean) | null): void {
+    CameraControl.wheelBlocker = fn;
+  }
+
+
   /**
    * 初始化鼠标控制
    * 设置迷雾和镜头截断距离，注册鼠标滚轮事件
@@ -57,6 +77,21 @@ export class CameraControl {
 
     // 如果鼠标不在游戏内，就不响应鼠标滚轮
     if (!DzIsMouseOverUI()) return;
+
+    // ⚠️ 光标停在**聊天面板**上时让路：这一格滚轮归聊天面板翻消息，镜头别跟着动。
+    // 用户报的「在这个面板上滚滑轮，视野也在变动」就是这个 —— 聊天框那条全局滚轮
+    // 触发器（`ChatBoxUI.onGlobalMouseWheel`）和这里是**两个独立的全局触发器**，
+    // 同一次滚动两边都会响。
+    //
+    // 判定是「光标压在哪根 frame 上」再往上走祖先链，不是自己算矩形 ——
+    // 理由与失败方向见 `ChatBoxUI.isMouseOverPanel()` 的说明。
+    // 判定体本身不在这里，是 `ChatBoxUI.create()` 通过 `setWheelBlocker()` 登记的
+    // （为什么用回调而不是直接 import，见字段上那段）。
+    //
+    // 只加这一道，上面那行的行为**一个字都没动** —— 别的地方滚轮该不该缩放镜头
+    // 不是这次要改的问题（顺带一提：那个条件和它上面那句注释说的是反的，
+    // 但那是另一件事，没实测过就先不动）。
+    if (CameraControl.wheelBlocker !== null && CameraControl.wheelBlocker()) return;
 
     // 标记需要重置镜头属性
     this.resetCam = true;

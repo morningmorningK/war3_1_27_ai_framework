@@ -136,6 +136,17 @@ export const META_KEY_SHIFT_CTRL_ALT = 7;
 // ============================================
 // Frame事件常量
 // ============================================
+//
+// ⚠️ 这组数字**必须**和引擎的 `frameeventtype` 逐一对齐，写错一位就是「绑到别的
+// 事件上」—— 不报错、不崩，只是回调在某些莫名其妙的时机被触发（或永远不触发）。
+//
+// 权威出处：`dev_lib/w3x2lni/data/zhCN-1.32.8/mpq/Scripts/Common.j` 的
+// `frameeventtype` 枚举（1022-1037 行）。KKWE 的 `DzFrameSetScriptByCode` 收的
+// event id 就是引擎那一套编号。
+//
+// 曾被写错为 WHEEL=5 / CHECKBOX_CHECKED=6 / TEXT_CHANGED=7 —— 那是**漏掉了
+// MOUSE_DOWN=5，从它往后整体少 1**。1~4 段是对的，所以点击/进出/抬起一直正常，
+// 错误只潜伏在 5 以后（那些 id 在本仓此前没有真实使用方，才一直没暴露）。
 
 /**
  * 当控件（如按钮）被点击时触发
@@ -158,19 +169,29 @@ export const FRAMEEVENT_MOUSE_LEAVE = 3;
 export const FRAMEEVENT_MOUSE_UP = 4;
 
 /**
+ * 当鼠标按钮在框架上按下时触发
+ */
+export const FRAMEEVENT_MOUSE_DOWN = 5;
+
+/**
  * 当在框架上滚动鼠标滚轮时触发
  */
-export const FRAMEEVENT_MOUSE_WHEEL = 5;
+export const FRAMEEVENT_MOUSE_WHEEL = 6;
 
 /**
  * 当复选框被勾选时触发（适用于复选框控件）
  */
-export const FRAMEEVENT_CHECKBOX_CHECKED = 6;
+export const FRAMEEVENT_CHECKBOX_CHECKED = 7;
+
+/**
+ * 当复选框被取消勾选时触发（适用于复选框控件）
+ */
+export const FRAMEEVENT_CHECKBOX_UNCHECKED = 8;
 
 /**
  * 当编辑框内的文本发生变化时触发
  */
-export const FRAMEEVENT_EDITBOX_TEXT_CHANGED = 7;
+export const FRAMEEVENT_EDITBOX_TEXT_CHANGED = 9;
 
 /**
  * Frame事件类型枚举
@@ -180,7 +201,9 @@ export enum FrameEventType {
     MOUSE_ENTER = FRAMEEVENT_MOUSE_ENTER,
     MOUSE_LEAVE = FRAMEEVENT_MOUSE_LEAVE,
     MOUSE_UP = FRAMEEVENT_MOUSE_UP,
+    MOUSE_DOWN = FRAMEEVENT_MOUSE_DOWN,
     MOUSE_WHEEL = FRAMEEVENT_MOUSE_WHEEL,
     CHECKBOX_CHECKED = FRAMEEVENT_CHECKBOX_CHECKED,
+    CHECKBOX_UNCHECKED = FRAMEEVENT_CHECKBOX_UNCHECKED,
     EDITBOX_TEXT_CHANGED = FRAMEEVENT_EDITBOX_TEXT_CHANGED
 }

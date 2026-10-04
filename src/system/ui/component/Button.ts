@@ -57,6 +57,13 @@ export class Button {
   private tooltip: string = "";
   private origin: string = ScreenCoordinates.ORIGIN_TOP_LEFT;
 
+  /**
+   * 允许坐标落在屏幕外（负值或超过 0.8 / 0.6）。**由入口决定，不手工改**：
+   * `setPosition` 复位成 `false`，`setPositionUnclamped` 置 `true`。
+   * 详见 `ScreenCoordinates.pixelToWC3Unclamped` 的注释。
+   */
+  private allowOffScreen: boolean = false;
+
   // FDF 模板相关
   private useTemplate: boolean = false;
   private templateName: string = "";
@@ -399,20 +406,10 @@ export class Button {
   }
 
   public setPosition(x: number, y: number): Button {
+    this.allowOffScreen = false;
     this.pixelX = x;
     this.pixelY = y;
-    if (this.backdropFrame) {
-      const wc3Pos = ScreenCoordinates.pixelToWC3(this.pixelX, this.pixelY, this.origin);
-      const wc3Width = (this.pixelWidth / ScreenCoordinates.STANDARD_WIDTH) * ScreenCoordinates.WC3_SCREEN_WIDTH;
-      const wc3Height = (this.pixelHeight / ScreenCoordinates.STANDARD_HEIGHT) * ScreenCoordinates.WC3_SCREEN_HEIGHT;
-
-      const rightX = wc3Pos.x + wc3Width;
-      const bottomY = wc3Pos.y - wc3Height;
-
-      this.backdropFrame
-        .setAbsPoint(FRAME_ALIGN_LEFT_TOP, wc3Pos.x, wc3Pos.y)
-        .setAbsPoint(FRAME_ALIGN_RIGHT_BOTTOM, rightX, bottomY);
-    }
+    this.updateFramePositions();
     // 同步更新 Text 组件位置
     if (this.textComponent) {
       this.textComponent.setPosition(x, y);
@@ -420,26 +417,58 @@ export class Button {
     return this;
   }
 
+  /**
+   * 与 `setPosition` 完全相同，**只差不把坐标钳进屏幕内** —— 允许 x / y 为负。
+   *
+   * 什么时候需要它：**「把整个面板推出屏幕」这类动画**。聊天框收起时，面板右边缘那排
+   * 按钮（收起箭头、筛选按钮、滑块）都要跟着滑到 x < 0 的位置，而 `pixelToWC3` 末了那两个
+   * `Math.max(0, ...)` 会把它们全按在 x = 0 上 —— 表现为「面板滑走了，按钮留在屏幕左边」。
+   *
+   * 常规按钮一律继续走 `setPosition`，不要顺手改用这个。
+   */
+  public setPositionUnclamped(x: number, y: number): Button {
+    this.allowOffScreen = true;
+    this.pixelX = x;
+    this.pixelY = y;
+    this.updateFramePositions();
+    // 同步更新 Text 组件位置（Text 有自己的 allowOffScreen，得走它那条 Unclamped）
+    if (this.textComponent) {
+      this.textComponent.setPositionUnclamped(x, y);
+    }
+    return this;
+  }
+
   public setSize(width: number, height: number): Button {
     this.pixelWidth = width;
     this.pixelHeight = height;
-    if (this.backdropFrame) {
-      const wc3Pos = ScreenCoordinates.pixelToWC3(this.pixelX, this.pixelY, this.origin);
-      const wc3Width = (this.pixelWidth / ScreenCoordinates.STANDARD_WIDTH) * ScreenCoordinates.WC3_SCREEN_WIDTH;
-      const wc3Height = (this.pixelHeight / ScreenCoordinates.STANDARD_HEIGHT) * ScreenCoordinates.WC3_SCREEN_HEIGHT;
-
-      const rightX = wc3Pos.x + wc3Width;
-      const bottomY = wc3Pos.y - wc3Height;
-
-      this.backdropFrame
-        .setAbsPoint(FRAME_ALIGN_LEFT_TOP, wc3Pos.x, wc3Pos.y)
-        .setAbsPoint(FRAME_ALIGN_RIGHT_BOTTOM, rightX, bottomY);
-    }
+    this.updateFramePositions();
     // 同步更新 Text 组件尺寸
     if (this.textComponent) {
       this.textComponent.setSize(width, height);
     }
     return this;
+  }
+
+  /**
+   * 把 `pixelX/pixelY/pixelWidth/pixelHeight` 落到原生 frame 上。
+   * 钳不钳制由 `allowOffScreen` 决定 —— 只有 `setPositionUnclamped` 会把它置 `true`。
+   */
+  private updateFramePositions(): void {
+    if (!this.backdropFrame) {
+      return;
+    }
+    const wc3Pos = this.allowOffScreen
+      ? ScreenCoordinates.pixelToWC3Unclamped(this.pixelX, this.pixelY, this.origin)
+      : ScreenCoordinates.pixelToWC3(this.pixelX, this.pixelY, this.origin);
+    const wc3Width = (this.pixelWidth / ScreenCoordinates.STANDARD_WIDTH) * ScreenCoordinates.WC3_SCREEN_WIDTH;
+    const wc3Height = (this.pixelHeight / ScreenCoordinates.STANDARD_HEIGHT) * ScreenCoordinates.WC3_SCREEN_HEIGHT;
+
+    const rightX = wc3Pos.x + wc3Width;
+    const bottomY = wc3Pos.y - wc3Height;
+
+    this.backdropFrame
+      .setAbsPoint(FRAME_ALIGN_LEFT_TOP, wc3Pos.x, wc3Pos.y)
+      .setAbsPoint(FRAME_ALIGN_RIGHT_BOTTOM, rightX, bottomY);
   }
 
   public setTexture(texturePath: string): Button {

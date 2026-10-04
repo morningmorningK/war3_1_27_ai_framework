@@ -26,6 +26,8 @@ import { testAddShield } from "./test/HeroUnitSkillTestExample";
 import { createLogger } from "./utils/logger";
 import { rgeisterUnitSpellEffectEvent } from "./examples/UnitEventExample";
 import { asyncSelfTest } from "./test/AsyncTestExample";
+import { seedChatBoxDemo } from "./test/ChatBoxTestExample";
+import { ChatBoxUI } from "./system/ui/ChatBoxUI";
 // TODO(阶段1): 探针验证完毕后删除此行与 initialize() 里的调用
 import { runNativeUIProbe } from "./test/NativeUIProbe";
 
@@ -43,7 +45,7 @@ const log = createLogger("Main");
  *
  * 验证完即把这里改回 `false`，并删除 `src/test/NativeUIProbe.ts`。
  */
-const ENABLE_NATIVE_UI_PROBE = true;
+const ENABLE_NATIVE_UI_PROBE = false;
 
 /**
  * UI v1.6 移植（`src/system/ui/gameui/`）总开关。
@@ -102,6 +104,7 @@ function main(): void {
     // 必须在上一行之后：那一行才同步造出全部单位，早了 Actor.allActors 里是空的
     seedBuffBarDemo();
     asyncSelfTest();
+    seedChatBoxDemo();
   });
 }
 
@@ -168,6 +171,22 @@ export function initialize(): void {
     DisplayToggleUI.getInstance().create();
   } catch (e) {
     log.error(`DisplayToggleUI.create() 抛出异常，已隔离：${e}`);
+  }
+
+  // 聊天框：面板 + 玩家聊天接线。布局常量与坐标来历都搬去了 `ChatBoxUI.ts` 文件头。
+  // 两个调用分开包 try/catch —— 建面板失败（比如 frame 建不出来）不该连带
+  // 订阅也一起没了，反过来也一样。
+  // 包 try/catch 的理由同上面几处：这里抛出去后面所有语句都不会执行。
+  try {
+    ChatBoxUI.getInstance().create();
+  } catch (e) {
+    log.error(`ChatBoxUI.create() 抛出异常，聊天框没建出来：${e}`);
+  }
+
+  try {
+    ChatBoxUI.getInstance().bindPlayerChat();
+  } catch (e) {
+    log.error(`ChatBoxUI.bindPlayerChat() 抛出异常，玩家聊天不会进面板：${e}`);
   }
 
   PlayersConfig.CameraControl();

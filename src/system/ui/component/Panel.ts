@@ -60,6 +60,15 @@ export class Panel {
   private origin: string = ScreenCoordinates.ORIGIN_TOP_LEFT;
   private alpha: number = 255;
 
+  /**
+   * 是否允许把面板摆到屏幕外。默认 `false`（`pixelToWC3` 会把坐标钳进屏幕内）。
+   *
+   * 只有 `setPositionUnclamped` 会打开它，`setPosition` 会关回去 ——
+   * 也就是说「允许出屏」这份许可**跟着你用的那个入口走**，不会莫名其妙粘住。
+   * 详见 `ScreenCoordinates.pixelToWC3Unclamped`。
+   */
+  private allowOffScreen: boolean = false;
+
   // 拖拽相关
   private isDraggable: boolean = false;
   private isDragging: boolean = false;
@@ -432,6 +441,23 @@ export class Panel {
    * 设置位置
    */
   public setPosition(x: number, y: number): Panel {
+    this.allowOffScreen = false;
+    this.pixelX = x;
+    this.pixelY = y;
+    this.updateFramePositions();
+    return this;
+  }
+
+  /**
+   * 与 `setPosition` 相同，但**允许把面板摆到屏幕外**（负的像素坐标不会被钳回 0）。
+   *
+   * 给「把整个面板推出屏幕」的收起动画用 —— 那个动画每一帧的坐标都是负的，
+   * 走 `setPosition` 会被 `pixelToWC3` 钳在 0 上，一帧都动不了。
+   *
+   * 打开之后会**一直有效**，直到有人调 `setPosition`。
+   */
+  public setPositionUnclamped(x: number, y: number): Panel {
+    this.allowOffScreen = true;
     this.pixelX = x;
     this.pixelY = y;
     this.updateFramePositions();
@@ -468,7 +494,10 @@ export class Panel {
   private updateFramePositions(): void {
     if (!this.backdropFrame) return;
 
-    const wc3Pos = ScreenCoordinates.pixelToWC3(this.pixelX, this.pixelY, this.origin);
+    // 出屏许可由 `setPositionUnclamped` / `setPosition` 决定，见 `allowOffScreen`
+    const wc3Pos = this.allowOffScreen
+      ? ScreenCoordinates.pixelToWC3Unclamped(this.pixelX, this.pixelY, this.origin)
+      : ScreenCoordinates.pixelToWC3(this.pixelX, this.pixelY, this.origin);
     const wc3Width = (this.pixelWidth / ScreenCoordinates.STANDARD_WIDTH) * ScreenCoordinates.WC3_SCREEN_WIDTH;
     const wc3Height = (this.pixelHeight / ScreenCoordinates.STANDARD_HEIGHT) * ScreenCoordinates.WC3_SCREEN_HEIGHT;
 

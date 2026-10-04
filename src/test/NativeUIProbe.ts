@@ -349,8 +349,12 @@ function probeGetters(): void {
  * 对同一个复选框把 1..9 全部绑一遍，每个 id 一个独立闭包，点击后看哪个打印出来。
  * `sync` 参数并排建两个框对比（A=true / B=false）。
  *
- * 这一步决定 `src/constants/frame/events.ts` 里那批错位常量该怎么修 ——
- * 现有常量以 `MOUSE_WHEEL` 为界整体偏移，`CHECKBOX_UNCHECKED` 还整条缺失。
+ * 这一步原本要决定 `src/constants/frame/events.ts` 里那批错位常量该怎么修 ——
+ * 旧常量漏了 `MOUSE_DOWN`，从 `MOUSE_WHEEL` 往后整体少 1，`CHECKBOX_UNCHECKED` 还整条缺失。
+ *
+ * ⚠️ **那批常量已经改了**（依据 `dev_lib/w3x2lni/data/zhCN-1.32.8/mpq/Scripts/Common.j`
+ * 的 `frameeventtype` 枚举，1022-1037 行）。所以现在 `eventId=8` 才是
+ * `CHECKBOX_UNCHECKED`、`eventId=7` 是 `CHECKBOX_CHECKED` —— 跑这个探针时按新编号读。
  *
  * 注意：光秃秃的 `CHECKBOX` 没有贴图，肉眼找不到，所以借一张内置贴图让它可见。
  */

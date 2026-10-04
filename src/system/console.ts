@@ -1,14 +1,17 @@
 import { MapPlayer, Players } from "@eiriksgata/wc3ts/*";
 import { MessageList } from "./ui/component/MessageList";
+import { ChatChannel } from "./ui/chatChannel";
 import { Queue } from "../utils/queue";
+import { formatClock } from "../utils/gameClock";
 
 /**
  * 消息项接口
  */
 interface ConsoleMessage {
   text: string;
-  duration: number;
   color: string;
+  /** 频道标签，透传给 `MessageList` 做筛选与按类淘汰。见 `ChatChannel` */
+  channel?: string;
   player?: MapPlayer;
 }
 
@@ -90,57 +93,83 @@ export class Console {
     }
 
     // 传递player参数给addMessage，如果指定了player则只有该玩家能看到
-    Console.messageList.addMessage(message.text, message.duration, message.color, message.player);
-   
+    Console.messageList.addMessage(message.text, message.color, message.player, message.channel);
+
+  }
+
+  /**
+   * 入队一条**任意颜色 + 任意频道**的消息（所有入口的公共实现）。
+   *
+   * `log` / `warn` / `error` 三个方法的颜色和频道是写死的（绿/黄/红 + 系统/警告），
+   * 但 `todo.md` §0.1.2 的配色表里还有「玩家消息=白色」「战斗日志=灰色」，
+   * 写死的三个入口覆盖不到，所以补这个通用入口 —— 那三个旧方法现在只是它的三个特例。
+   *
+   * 走队列而不是直接 `messageList.addMessage`，是为了保住 `Console.init` 里那个
+   * 每 0.1 秒消费一条的节流：`todo.md` §0.2.6 明确要求「聊天消息推送作为异步事件，
+   * 消息入消息队列，由帧循环统一消费输出」，顺带也是对刷屏的第一道缓冲。
+   *
+   * ## 时间戳打在这里，不在渲染那里
+   *
+   * `[HH:MM:SS]` 是在**入队这一刻**拼上去的，不是 `MessageList` 画的时候。
+   * 队列每 0.1 秒才放行一条，一堆积压的消息如果按渲染时刻打戳，时间会越偏越后 ——
+   * 消息说的是「什么时候发生的事」，那当然得按发生的时刻算。
+   *
+   * @param message 消息文本
+   * @param color 十六进制颜色，**不含 `#`、不含 `|cff` 前缀**（`Text` 组件自己会拼 `|cff`）
+   * @param channel 频道标签（可选）。筛选与按类淘汰都按它分组；不给的消息在任何筛选下都看不见
+   * @param player 目标玩家（可选，如果不指定则显示给所有玩家）
+   */
+  public static say(
+    message: string,
+    color: string = "FFFFFF",
+    channel?: string,
+    player?: MapPlayer
+  ): void {
+    Console.messageQueue.enqueue({
+      text: Console.stamp(message),
+      color: color,
+      channel: channel,
+      player: player
+    });
+  }
+
+  /** 拼 `[HH:MM:SS] ` 前缀。时钟取不到时原样返回（见 `formatClock`） */
+  private static stamp(message: string): string {
+    const clock = formatClock();
+    if (clock === "") {
+      return message;
+    }
+    return `[${clock}] ${message}`;
   }
 
   /**
    * 记录日志消息（只存入队列，不立即显示）
-   * 
+   *
    * @param message 消息文本
-   * @param duration 显示时长（秒，默认5秒）
    * @param player 目标玩家（可选，如果不指定则显示给所有玩家）
    */
-  public static log(message: string, duration: number = 5, player?: MapPlayer): void {
-    Console.messageQueue.enqueue({
-      text: message,
-      duration: duration,
-      color: "00FF00",
-      player: player
-    });
+  public static log(message: string, player?: MapPlayer): void {
+    Console.say(message, "00FF00", ChatChannel.SYSTEM, player);
   }
 
   /**
    * 记录错误消息（只存入队列，不立即显示）
-   * 
+   *
    * @param message 消息文本
-   * @param duration 显示时长（秒，默认5秒）
    * @param player 目标玩家（可选，如果不指定则显示给所有玩家）
    */
-  public static error(message: string, duration: number = 5, player?: MapPlayer): void {
-
-    Console.messageQueue.enqueue({
-      text: message,
-      duration: duration,
-      color: "FF0000",
-      player: player
-    });
+  public static error(message: string, player?: MapPlayer): void {
+    Console.say(message, "FF0000", ChatChannel.WARNING, player);
   }
 
   /**
    * 记录警告消息（只存入队列，不立即显示）
-   * 
+   *
    * @param message 消息文本
-   * @param duration 显示时长（秒，默认5秒）
    * @param player 目标玩家（可选，如果不指定则显示给所有玩家）
    */
-  public static warn(message: string, duration: number = 5, player?: MapPlayer): void {
-    Console.messageQueue.enqueue({
-      text: message,
-      duration: duration,
-      color: "FFFF00",
-      player: player
-    });
+  public static warn(message: string, player?: MapPlayer): void {
+    Console.say(message, "FFFF00", ChatChannel.WARNING, player);
   }
 
   /**

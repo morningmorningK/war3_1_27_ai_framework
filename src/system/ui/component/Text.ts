@@ -179,6 +179,14 @@ export class Text implements IDraggableComponent {
   private fontFlags: number = 0;  // 字体标志
   
   private origin: string = ScreenCoordinates.ORIGIN_TOP_LEFT;
+
+  /**
+   * 是否允许把文本摆到屏幕外。默认 `false`（`pixelToWC3` 会把坐标钳进屏幕内）。
+   *
+   * 只有 `setPositionUnclamped` 会打开它，`setPosition` 会关回去 ——
+   * 「允许出屏」这份许可跟着入口走。详见 `ScreenCoordinates.pixelToWC3Unclamped`。
+   */
+  private allowOffScreen: boolean = false;
   
   // 内边距（像素）
   private paddingTop: number = 0;
@@ -839,6 +847,23 @@ export class Text implements IDraggableComponent {
    * 设置位置
    */
   public setPosition(x: number, y: number): Text {
+    this.allowOffScreen = false;
+    this.pixelX = x;
+    this.pixelY = y;
+    this.updateFramePositions();
+    return this;
+  }
+
+  /**
+   * 与 `setPosition` 相同，但**允许把文本摆到屏幕外**（负的像素坐标不会被钳回 0）。
+   *
+   * 聊天面板收起时整块面板要平移出屏幕左边缘，消息文本得跟着一起出去 ——
+   * 走 `setPosition` 的话全被钳在 x = 0 上堆成一坨。
+   *
+   * 打开之后会**一直有效**（`setSize` 等内部重算也跟着走），直到有人调 `setPosition`。
+   */
+  public setPositionUnclamped(x: number, y: number): Text {
+    this.allowOffScreen = true;
     this.pixelX = x;
     this.pixelY = y;
     this.updateFramePositions();
@@ -906,7 +931,10 @@ export class Text implements IDraggableComponent {
   private updateFramePositions(): void {
     if (!this.textFrame) return;
 
-    const wc3Pos = ScreenCoordinates.pixelToWC3(this.pixelX, this.pixelY, this.origin);
+    // 出屏许可由 `setPositionUnclamped` / `setPosition` 决定，见 `allowOffScreen`
+    const wc3Pos = this.allowOffScreen
+      ? ScreenCoordinates.pixelToWC3Unclamped(this.pixelX, this.pixelY, this.origin)
+      : ScreenCoordinates.pixelToWC3(this.pixelX, this.pixelY, this.origin);
     const wc3Width = (this.pixelWidth / ScreenCoordinates.STANDARD_WIDTH) * ScreenCoordinates.WC3_SCREEN_WIDTH;
     const wc3Height = (this.pixelHeight / ScreenCoordinates.STANDARD_HEIGHT) * ScreenCoordinates.WC3_SCREEN_HEIGHT;
     
