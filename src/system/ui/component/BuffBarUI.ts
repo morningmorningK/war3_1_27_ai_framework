@@ -178,17 +178,47 @@ function stackBadgeText(buff: Buff): string {
   return buff.stacks > 1 ? `${buff.stacks}` : "";
 }
 
-function buffTipsTextColor(buff: Buff): string {
+/**
+ * Buff 分类配色 —— **一套调色板，两个消费者**（todo.md「统一UI色彩体系，通过颜色快速区分
+ * Buff类型，降低玩家识别成本」）。
+ *
+ * | 分类 | 颜色 | 取色依据 |
+ * |---|---|---|
+ * | 增益 | 亮绿 | todo「增益Buff：亮绿色/浅色图标」 |
+ * | 减益 | 暗红 | todo「减益Buff：暗红色/暗色图标」 |
+ * | 中性 | 浅灰 | 既非增益也非减益（todo 中「部分光环」） |
+ *
+ * 两个消费者：
+ *   1. **图标**用 `DzFrameSetVertexColor` 乘算上色；
+ *   2. **悬停正文**用 `|cff` 前缀（`Tips.formatDisplayText`）。
+ *
+ * 两处必须**同源**，否则会出现「图标绿的、正文红的」，比不配色更乱 —— 所以只有这一个函数。
+ *
+ * ⚠️ 乘算是**只减不增**（结果 = 贴图 × 该色），所以给的是**接近白**的浅色。
+ * 直接拿饱和纯色去乘会把彩色图标压成一块死色。要调色就改这里的三个三元组，
+ * 别再往别处拷贝一份。
+ */
+function buffCategoryColor(buff: Buff): {
+  r: number;
+  g: number;
+  b: number;
+  hex: string;
+} {
   switch (buff.polarity) {
     case BuffPolarity.BENEFICIAL:
-      return "A8FFA8";
+      return { r: 168, g: 255, b: 168, hex: "A8FFA8" };
     case BuffPolarity.NEGATIVE:
-      return "FF8888";
+      return { r: 255, g: 136, b: 136, hex: "FF8888" };
     case BuffPolarity.NEUTRAL:
-      return "CCCCCC";
+      return { r: 204, g: 204, b: 204, hex: "CCCCCC" };
     default:
-      return "FFFFFF";
+      return { r: 255, g: 255, b: 255, hex: "FFFFFF" };
   }
+}
+
+/** 悬停正文的颜色：直接取调色板的 `hex` 分量（见 `buffCategoryColor`） */
+function buffTipsTextColor(buff: Buff): string {
+  return buffCategoryColor(buff).hex;
 }
 
 /**
@@ -594,6 +624,7 @@ export class BuffBarUI {
         .setAlpha(200);
       DzFrameSetPriority(border.handle, 898);
 
+      const catColor = buffCategoryColor(buff);
       const icon = Frame.createType(
         `BuffSlotIcon_${nameId}_${i}`,
         border,
@@ -605,7 +636,17 @@ export class BuffBarUI {
         .setPoint(FRAME_ALIGN_LEFT_TOP, border, FRAME_ALIGN_LEFT_TOP, padX, -padY)
         .setSize(wc3Icon.width, wc3Icon.height)
         .setTexture(def.icon, 0, true)
-        .setAlpha(255);
+        .setAlpha(255)
+        // 按分类给图标乘算上色（todo.md「统一UI色彩体系」）。
+        //
+        // 用 `DzGetColor(r,g,b,a)` 打包而不是自己写位运算：它是 kkapi 提供的原生
+        // （`bzapi/call.txt:488`，`BlizzardAPI.j:71` 有声明），rgba 的位序由它负责，
+        // 调用方不必也知道（本仓库没人验证过那个位序，猜错会得到完全不对的颜色）。
+        //
+        // 全仓库此前 `DzFrameSetVertexColor` 零调用 —— 这一处是第一个消费者。
+        // 若进游戏后发现图标颜色**毫无变化**，那就是这个原生在 1.27a 上不生效，
+        // 不是配色写错了；此时退回「只给正文上色」即可（正文那条路是已验证的）。
+        .setVertexColor(DzGetColor(catColor.r, catColor.g, catColor.b, 255));
 
       // 剩余时间：铺满整个槽位 + 居中对齐 → 数字落在图标正中。
       // 这里**必须**用两个锚点把 frame 撑成槽位大小，不能再用「单点 + setSize」：
