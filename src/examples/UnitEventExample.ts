@@ -19,7 +19,7 @@ export function rgeisterUnitSpellEffectEvent(): void {
   });
 
   for (let j = 0; j < 5; j++) {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
       const unit = Actor.create(Players[j], FourCC("Hpal"), 0, 0);
       if (unit == null) continue;
       log.info("创建单位: " + unit.id);
@@ -27,7 +27,8 @@ export function rgeisterUnitSpellEffectEvent(): void {
       // 只用 Actor 自定义血条；原生预选条要关掉，否则会叠出第二条。
       unit.setPreselectUIVisible(false);
       unit.createBloodBar();
-      unit.setLabel("测试单位");
+      // 名字不在这里设：没显式 setLabel 时血条自己取「英雄称谓 / 单位名」
+      // （`Actor.getLabel()` → `getDisplayName()`）。圣骑士会显示各自的英雄称谓。
 
       unit.addAbility(FourCC("AUfn"));
       unit.addAbility(FourCC("AHwe"));
@@ -53,6 +54,6 @@ export function rgeisterUnitSpellEffectEvent(): void {
     if (unit == null) continue;
     unit.setPreselectUIVisible(false);
     unit.createBloodBar();
-    unit.setLabel("普通单位");
+    // 同上：步兵不是英雄，`getDisplayName()` 取单位名 —— 这里会显示「步兵」
   }
 }

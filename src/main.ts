@@ -15,7 +15,7 @@ import { BuffBarUI } from "./system/ui/component/BuffBarUI";
 import { RelicBarUI } from "./system/ui/component/RelicBarUI";
 import { UnitBloodToggleUI } from "./system/ui/component/UnitBloodToggleUI";
 import { relicSystemTestExample } from "./test/RelicSystemTestExample";
-import { buffBarTestExample } from "./test/BuffBarTestExample";
+import { seedBuffBarDemo } from "./test/BuffBarTestExample";
 import { runSpellCardBulletHellTest } from "./test/BulletHellTestExample";
 import { testAddShield } from "./test/HeroUnitSkillTestExample";
 import { createLogger } from "./utils/logger";
@@ -93,6 +93,8 @@ function main(): void {
   }
   Timer.create().start(0.01, false, () => {
     rgeisterUnitSpellEffectEvent();
+    // 必须在上一行之后：那一行才同步造出全部单位，早了 Actor.allActors 里是空的
+    seedBuffBarDemo();
   });
 }
 
@@ -112,6 +114,17 @@ export function initialize(): void {
   registerDefaultRelicsAndPools();
   RelicBarUI.getInstance().create();
   BuffBarUI.getInstance().create();
+
+  // 把 buff 栏接到「选中/取消选中」上。
+  // **之前一直漏了这一步** —— 只 create() 不 bind，事件从不触发，watchTarget 恒为
+  // undefined，rebuildSlots() 第一行就 return，一个图标都不画。
+  // 包 try/catch 的理由同下面几处：bootstrap.lua 调 main.initialize() 时没有 pcall，
+  // 这里抛出去后面所有 system 的 init 都不会执行。
+  try {
+    BuffBarUI.getInstance().bindFollowLocalSelection();
+  } catch (e) {
+    log.error(`BuffBarUI.bindFollowLocalSelection() 抛出异常，已隔离：${e}`);
+  }
 
   // 头顶血条的分类开关（右上角两个按钮）。
   // 包 try/catch 的理由与本函数末尾那段注释相同：bootstrap.lua 调 main.initialize()

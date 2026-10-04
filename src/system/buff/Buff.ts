@@ -23,6 +23,15 @@ export abstract class Buff {
   duration: number;
   /** 已经过时间（秒） */
   elapsed: number = 0;
+  /**
+   * 叠加层数（默认 1）。
+   *
+   * ⚠️ 基类**只负责携带与展示**，不会自动增减 —— 叠层语义（攻击叠层、损血叠层、
+   * 装备被动等）由各自的施加方在业务里写 `stacks`。UI 在图标右下角显示它。
+   */
+  stacks: number = 1;
+  /** 叠层上限（可选）。未设置表示无上限 */
+  maxStacks?: number;
   /** 正面 / 负面 / 中性 */
   readonly polarity: BuffPolarity;
   /** 施加者单位 id，可选 */

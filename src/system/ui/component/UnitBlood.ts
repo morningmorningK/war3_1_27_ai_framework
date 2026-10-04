@@ -4,6 +4,7 @@ import { FourCC, worldToScreen } from "src/utils/helper";
 import { Actor } from "../../actor";
 import { createLogger } from "src/utils/logger";
 import { UNIT_TYPE_HERO } from "src/constants/game/units";
+import { onFrame } from "../FrameLoop";
 
 const log = createLogger("UnitBlood");
 
@@ -17,8 +18,26 @@ const log = createLogger("UnitBlood");
 /** 数字与框边之间的空隙，左右各一份。框宽 = 数字宽度 + 2 * 这个值 */
 const LEVEL_BOX_PAD = 4;
 
-/** 底图里那条分隔线右边界的 frame 内坐标：第 26 个像素 * (130/140) */
+/**
+ * 底图里那条分隔线右边界的 frame 内坐标：第 26 个像素 * (130/140)。
+ *
+ * 实测（数 `01.tga` 像素）：分隔线是**双线**，占纹理 x 24..25，垂直贯穿 y 4..24；
+ * 左边框占 x 2..3，上下边框占 y 2..3 / y 24..25，中间是纯黑。
+ * 所以「烘死格子的右边界」和「分隔线的右缘」本来就是指同一条边。
+ */
 const LEVEL_BOX_BAKED_END = (26 * 130) / 140;
+
+/**
+ * 三条 bar（血 / 护盾 / 蓝）的左起点与宽度，单位同 `xx / 2400`。
+ *
+ * - 英雄：从 26 起 —— 左边那 26 个像素宽的地盘留给等级数字框。
+ * - 普通单位：从 4 起 —— 烘死的等级格子不用了，把那块宽度一并吃进来填满。
+ *   右端两边保持不动（26 + 100 = 4 + 122 = 126），所以只是往左长了一截、不留空隙。
+ */
+const BAR_LEFT_HERO = 26;
+const BAR_WIDTH_HERO = 100;
+const BAR_LEFT_NONHERO = 4;
+const BAR_WIDTH_NONHERO = 122;
 
 /**
  * 血条分类。开关是**按分类**控制的，不是按单个单位。
@@ -82,11 +101,20 @@ export class UnitBlood {
   levelBoxFrame: Frame | undefined = undefined;
 
   /**
-   * 盖掉底图里烘焙的那个格子用的纯黑块，只有英雄才有。见构造函数的 ① 段。
+   * 盖掉底图里烘焙的那个格子用的纯黑块。**两种分类都有**，只是盖的范围不同：
+   * 英雄连左边框一起盖（接着会自建数字框把左边框重画回来），普通单位只盖分隔线。
+   * 见构造函数的 ① 段。
    */
   levelMaskFrame: Frame | undefined = undefined;
   nameBoxFrame: Frame;
   nameFrame: Frame;
+
+  /**
+   * 三条 bar 的**满值宽度**（已除 2400 的归一化值）。`updateUI` 按百分比算实际宽度时要用它 ——
+   * 两种分类的满宽不同（英雄 100 / 普通单位 122，见 `BAR_WIDTH_*`），
+   * 写死 100 会让普通单位满血时只填到 82%。
+   */
+  private readonly barFullWidth: number;
 
   /** destroy() 只允许生效一次，见该方法的注释 */
   private destroyed: boolean = false;
@@ -123,62 +151,72 @@ export class UnitBlood {
     // 本次实例的 frame 名字后缀。见 `generation` 的注释 —— 销毁后重建时名字必须不同。
     const gen = UnitBlood.nextGeneration();
 
+    // 英雄 / 普通单位的分叉点。分类是每次都能从单位本身重新算出来的固有属性（见 `categoryOf`）。
+    const isHero = UnitBlood.categoryOf(actor) === "hero";
+    // 三条 bar 的左起点与宽度：普通单位把烘死的等级格子那块宽度吃进来（详见常量注释）
+    const barLeft = (isHero ? BAR_LEFT_HERO : BAR_LEFT_NONHERO) / 2400;
+    const barWidth = (isHero ? BAR_WIDTH_HERO : BAR_WIDTH_NONHERO) / 2400;
+    this.barFullWidth = barWidth;
+
     //血条UI基底框架
     this.frame = Frame.createType(`UnitBloodFrame_${actor.id}_g${gen}`, Frame.fromHandle(DzGetGameUI())!, 0, "BACKDROP", "")!;
     this.frame.setSize(130 / 2400, 28 / 1800);
     this.frame.setTexture("Texture\\ui\\hpbar\\01.tga", 0, false);
     this.frame.setVisible(true);
 
+    // ## 底图里烘死的那个等级格子
+    //
+    // 原先用的框是**烘在底图 `01.tga` 里的**：一个固定宽度的小格子（纹理 x 2..25，
+    // 即 frame 内 0..22.3，实测约 14 屏幕像素宽），数字不管几位都塞在里面，
+    // 而数字只有 4~5 像素 —— 一位数时框里空一大半，两位数又几乎顶满。
+    // 用户要的是「框随里面的内容大小变化」，所以那层烘焙格子**本实现不再使用**，
+    // 改成下面这几个 frame 自己搭：
+    //
+    //   ① levelMaskFrame —— 纯黑，把烘死的左边框 / 分隔线盖掉
+    //   ② levelBoxFrame  —— 自建的数字框（**仅英雄**），贴图是那格子的切图，宽度跟着数字走
+    //   ③ levelFrame     —— 数字本身（**仅英雄**，最后建，压在最上面）
+    //
+    // 兄弟 frame 的绘制顺序就是创建顺序，所以 ① 必须建在三条 bar **之前** ——
+    // 否则普通单位被左移的 bar 会被盖块压住（英雄的 bar 从 x26 起，和盖块不重叠，建哪都一样）。
+    //
+    // 盖块只盖 y 4..24：上下边框（纹理 y 2..3 / 24..25）不能碰，横向盖到分隔线右缘
+    // `LEVEL_BOX_BAKED_END` 为止。两种分类的左起点不同：
+    //   · 英雄：从 x0 起，**连左边框一起盖** —— 紧接着自建的 ② 会把左边框重画回来。
+    //   · 普通单位：从 `BAR_LEFT_NONHERO` 起，**留住左边框**（没有 ② 去重画它），
+    //     只盖分隔线。屏幕上普通单位血条左边那个空方格，就是这条分隔线。
+    this.levelMaskFrame = Frame.createType(`LevelMaskFrame_${actor.id}_g${gen}`, this.frame, 0, "BACKDROP", "")!;
+    this.levelMaskFrame.setTexture("Texture\\ui\\hpbar\\levelmask.tga", 0, false);
+    this.levelMaskFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, (isHero ? 0 : BAR_LEFT_NONHERO) / 2400, -4 / 1800);
+    this.levelMaskFrame.setPoint(FRAME_ALIGN_RIGHT_BOTTOM, this.frame, FRAME_ALIGN_LEFT_TOP, LEVEL_BOX_BAKED_END / 2400, -24 / 1800);
+
     //血条生命值框架
     this.lifeFrame = Frame.createType(`LifeFrame_${actor.id}_g${gen}`, this.frame, 0, "BACKDROP", "")!;
-    this.lifeFrame.setSize(100 / 2400, 12 / 1800);
+    this.lifeFrame.setSize(barWidth, 12 / 1800);
     this.lifeFrame.setTexture("Texture\\ui\\hpbar\\02.tga", 0, false);
-    this.lifeFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, 26 / 2400, -4 / 1800);
+    this.lifeFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, barLeft, -4 / 1800);
 
     // 护盾值框架：与血条同位置同大小，覆盖在血条上方，只显示护盾百分比宽度，更直观
     this.shieldFrame = Frame.createType(`ShieldFrame_${actor.id}_g${gen}`, this.frame, 0, "BACKDROP", "")!;
-    this.shieldFrame.setSize(100 / 2400, 12 / 1800);
+    this.shieldFrame.setSize(barWidth, 12 / 1800);
     this.shieldFrame.setTexture("Texture\\ui\\hpbar\\huduntiao.tga", 0, false);
-    this.shieldFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, 26 / 2400, -4 / 1800);
+    this.shieldFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, barLeft, -4 / 1800);
     this.shieldFrame.setVisible(false);
 
     //血条魔法值框架
     this.manaFrame = Frame.createType(`ManaFrame_${actor.id}_g${gen}`, this.frame, 0, "BACKDROP", "")!;
-    this.manaFrame.setSize(100 / 2400, 8 / 1800);
+    this.manaFrame.setSize(barWidth, 8 / 1800);
     this.manaFrame.setTexture("Texture\\ui\\hpbar\\03.tga", 0, false);
     // 向下微调，为护盾条留出空间
-    this.manaFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, 26 / 2400, -18 / 1800);
+    this.manaFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, barLeft, -18 / 1800);
 
     // 等级数字：**只有英雄才建**。普通单位的血条按用户要求去掉左边的等级数字。
     //
     // 这里是「根本不建」而不是「建了再藏」—— 少一个 frame，`updateUI` / `setScale`
     // 里也就没有对着隐藏 frame 白调 setText / setFont 的开销。
     //
-    // ## 数字外面的那个框
-    //
-    // 原先用的框是**烘在底图 `01.tga` 里的**：一个固定宽度的小格子（像素 x 2..25，
-    // 即 frame 内 0..22.3），数字不管几位都塞在里面。实测（`img2.png` 数像素）
-    // 那个格子约 14 屏幕像素宽，而数字只有 4~5 像素 —— 一位数时框里空一大半，
-    // 两位数又几乎顶满。用户要的是「框随里面的内容大小变化」，所以那层烘焙的格子
-    // **本实现不再使用**，改成下面三个 frame 自己搭：
-    //
-    //   ① levelMaskFrame —— 纯黑，把烘焙格子的左边框和分隔线盖掉
-    //   ② levelBoxFrame  —— 自建的数字框，贴图是那格子的切图，宽度跟着数字走
-    //   ③ levelFrame     —— 数字本身（最后建，压在最上面）
-    //
-    // 兄弟 frame 的绘制顺序就是创建顺序，所以这①②③的顺序不能换。
-    if (UnitBlood.categoryOf(actor) === "hero") {
-      // ① 盖线块。
-      //
-      // 底图里那个格子的左边框（像素 x 2..3）和右边那条分隔线（像素 x 24..25）
-      // 是画在 01.tga 上的死像素，自建框挪开之后它们会露出来变成孤零零的线，必须盖掉。
-      // 上下各留 4 像素的边框不动（只盖 y 4..24 —— 分隔线正好只存在于这段），
-      // 否则会把整条血条的上下边框一起涂掉。
-      this.levelMaskFrame = Frame.createType(`LevelMaskFrame_${actor.id}_g${gen}`, this.frame, 0, "BACKDROP", "")!;
-      this.levelMaskFrame.setTexture("Texture\\ui\\hpbar\\levelmask.tga", 0, false);
-      this.levelMaskFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, 0, -4 / 1800);
-      this.levelMaskFrame.setPoint(FRAME_ALIGN_RIGHT_BOTTOM, this.frame, FRAME_ALIGN_LEFT_TOP, LEVEL_BOX_BAKED_END / 2400, -24 / 1800);
-
+    // ②③ 的编号接的是上面 ① 盖线块那段注释 —— 盖块已经无条件建好了，这里只补英雄专属的
+    // 自建框和数字本身。
+    if (isHero) {
       // ② 自建数字框。
       //
       // 左边缘钉死在整条血条的左边缘（0），右边缘**挂在数字 frame 的右边缘**（+ 空隙）。
@@ -401,7 +439,7 @@ export class UnitBlood {
     const children: (Frame | undefined)[] = [
       // 等级框的锚点**引用了等级数字 frame**，必须排在它前面销毁；
       // 否则数字先被释放，框还挂着一个悬垂锚点，下一次布局遍历就踩空。
-      this.levelBoxFrame, // 普通单位没有这三个 frame（见构造函数）
+      this.levelBoxFrame, // 本行与下一行的 frame 仅英雄有；levelMaskFrame 两种分类都有（见构造函数）
       this.levelMaskFrame,
       this.levelFrame,
       this.lifeFrame,
@@ -433,11 +471,13 @@ export class UnitBlood {
     UnitBlood.isDrawEventRegistered = true;
 
     // 执行注册逻辑
-    DzFrameSetUpdateCallbackByCode(() => {
+    //
+    // ⚠️ 必须走 `onFrame()`，**不要**在这里直接调 `DzFrameSetUpdateCallbackByCode` ——
+    // 那是 Set 不是 Add，全局只有一个回调槽，直接调会把别的每帧订阅者顶掉
+    // （或者反过来被别人顶掉，表现是血条突然不跟着镜头动了），详见 FrameLoop 的注释。
+    onFrame(() => {
       CameraControl.update();
-      // 这里可以添加其他需要每帧更新的血条逻辑
       UnitBlood.updateAllUnitBloods();
-
     });
 
     //使用计时器更新
@@ -537,13 +577,13 @@ export class UnitBlood {
   private updateLifeBar(): void {
     const maxLife = this.actor.maxLife;
     const lifePercent = maxLife > 0 ? this.actor.life / maxLife : 0;
-    this.lifeFrame.setSize((100 / 2400) * lifePercent, 12 / 1800);
+    this.lifeFrame.setSize(this.barFullWidth * lifePercent, 12 / 1800);
   }
 
   private updateManaBar(): void {
     const maxMana = this.actor.maxMana;
     const manaPercent = maxMana > 0 ? this.actor.mana / maxMana : 0;
-    this.manaFrame.setSize((100 / 2400) * manaPercent, 8 / 1800);
+    this.manaFrame.setSize(this.barFullWidth * manaPercent, 8 / 1800);
   }
 
   /**
@@ -564,7 +604,7 @@ export class UnitBlood {
     }
 
     const clamped = Math.max(0, Math.min(shieldPercent, 1));
-    this.shieldFrame.setSize((100 / 2400) * clamped, 12 / 1800);
+    this.shieldFrame.setSize(this.barFullWidth * clamped, 12 / 1800);
   }
 
   /**

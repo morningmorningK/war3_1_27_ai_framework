@@ -224,15 +224,46 @@ export class Actor extends Unit {
     }
   }
 
+  /**
+   * 显式覆盖血条上显示的名字；传空串 = 恢复成 `getDisplayName()` 的默认值。
+   *
+   * 写进 frame 的用 `getLabel()` 而不是 `value`，这样「frame 上的字」永远等于
+   * `getLabel()`，不会出现「传空串清掉、但 `getLabel()` 又回退出名字」的不一致。
+   */
   public setLabel(value: string) {
     this.label = value;
     if (this.bloodBarUI) {
-      this.bloodBarUI.nameFrame.setText(value);
+      this.bloodBarUI.nameFrame.setText(this.getLabel());
     }
   }
 
+  /**
+   * 血条上显示的名字。
+   *
+   * **没显式 `setLabel()` 过就回退到 `getDisplayName()`** —— 否则每处造单位都得
+   * 记得补一句 `setLabel()`，漏一处就是一块空白名牌。
+   */
   public getLabel(): string {
-    return this.label;
+    return this.label !== "" ? this.label : this.getDisplayName();
+  }
+
+  /**
+   * 单位显示名：英雄取**英雄称谓**（`nameProper`，如「光明使者乌瑟尔」），
+   * 其余取**单位名**（`name`，如「步兵」）。
+   *
+   * 判据用「`nameProper` 为空就回退」而不是查 `IsUnitType(handle, UNIT_TYPE_HERO)`：
+   * `GetHeroProperName` 对**非英雄**和**幻象**都返回空
+   * （`wc3ts/src/handles/unit.ts:266-271` 的文档写明），空值回退天然覆盖这两类；
+   * 而且地图作者真把某个英雄的称谓留空时，回退到单位名也正是想要的结果。
+   *
+   * ⚠️ 先挡悬垂句柄再调原生 —— `Actor.allActors` 里留着已死 / 已移除的单位，
+   * 而 `GetHeroProperName` / `GetUnitName` 打在悬垂句柄上是访问违例。
+   * `UnitBlood.create` 在 new 之前也有一道同样的守卫，但那道只在那边有效。
+   */
+  public getDisplayName(): string {
+    if (this.handle === undefined || GetUnitTypeId(this.handle) === 0) return "";
+    const proper = this.nameProper;
+    return proper !== "" ? proper : this.name;
   }
 
   /**

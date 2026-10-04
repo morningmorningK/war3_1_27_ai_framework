@@ -58,9 +58,14 @@ export function getRemainingSeconds(buff: Buff): number | null {
   return Math.max(0, buff.duration - buff.elapsed);
 }
 
-/** 槽位角标：简短时间或 ∞ */
+/**
+ * 槽位角标：简短剩余时间。
+ *
+ * **常驻 Buff 返回空串**（而不是 "∞"）—— todo.md 「永久、常驻类 Buff 隐藏时间数字」。
+ * 是否永久由 Tooltip 去说（`buildBuffTooltipText` 里仍然写"永久"），图标上只留图标与层数。
+ */
 export function formatSlotTimeShort(buff: Buff): string {
-  if (buff.duration < 0) return "∞";
+  if (buff.duration < 0) return "";
   const r = getRemainingSeconds(buff)!;
   if (r >= 100) return `${math.floor(r)}`;
   if (r >= 10) return `${math.floor(r)}`;

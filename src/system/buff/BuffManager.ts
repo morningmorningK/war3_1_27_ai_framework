@@ -50,6 +50,34 @@ export class BuffManager {
     return this.buffs.slice();
   }
 
+  /**
+   * 展示用排序（todo.md §1）：
+   *   1. 限时在前、常驻在后（`duration < 0` 为常驻）
+   *   2. 限时之间按**剩余时间升序**（快到期的靠前）
+   *   3. 其余按 `id` 升序 —— id 单调自增，等价于「进入生效时间，旧在前」
+   *
+   * ⚠️ **只排副本，绝不排序 `this.buffs` 本身**：`applyShieldDamage()` 依赖
+   * 列表的插入序（"先加的先吸"），原地排序会静默改掉护盾吸收顺序。
+   *
+   * 排序结果在稳态下是**时不变**的：所有 Buff 用同一个 `delta` tick，
+   * 任意两个限时 Buff 的剩余时间之差恒定，不会每 0.1 秒重排一次导致整栏重建。
+   */
+  getSortedBuffs(): Buff[] {
+    const arr = this.getBuffs();
+    arr.sort((a, b) => {
+      const pa = a.duration < 0 ? 1 : 0;
+      const pb = b.duration < 0 ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      if (pa === 0) {
+        // 直接用 duration - elapsed，不调 getRemainingSeconds()：数据层不反向依赖展示层
+        const d = a.duration - a.elapsed - (b.duration - b.elapsed);
+        if (d !== 0) return d;
+      }
+      return a.id - b.id;
+    });
+    return arr;
+  }
+
   getBuffsByType(typeId: string): Buff[] {
     return this.buffs.filter((b) => b.typeId === typeId);
   }
