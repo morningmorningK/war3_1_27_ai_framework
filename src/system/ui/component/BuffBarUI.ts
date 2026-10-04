@@ -249,6 +249,22 @@ export class BuffBarUI {
       return;
     }
 
+    // 把 Tips 的帧**提前到这里**建出来（同步、非事件上下文），不要等第一次悬停。
+    //
+    // 悬停回调是 `DzFrameSetScriptByCode(hit, MOUSE_ENTER, ..., sync=true)` 注册的，
+    // 按 `bzapi/action.txt` 的注释，sync=true 时「执行会阻止它原本的功能继续响应」——
+    // 也就是说回调嵌在**引擎的鼠标事件分发内部同步执行**。在里面调 `Tips.getInstance()`
+    // 会触发 `Tips.create()`，往引擎**正在遍历的帧树里新增节点**（还要 `DzFrameSetPriority`）。
+    // 表现就是鼠标一移到 buff 图标上直接原生闪退：Game.dll 里拿一个空句柄去取字段
+    // （ACCESS_VIOLATION 读 0x1C，崩溃报告的前 4 层全是 Game.dll，从 kkapi 的 JAPI 分发进来）。
+    //
+    // 为什么只有 buff 栏中招：`RelicBarUI` 在建槽位时（`rebuildSlots`）就调了
+    // `Tips.getInstance()`，等于在同步上下文里提前建好了，悬停时只剩改属性。
+    //
+    // 只提前**建帧**，不改任何显示行为：`create()` 会把三个 frame 都设成 alpha 0、
+    // `isVisible = false`，并且逐个 `setIgnoreTrackEvents(true)`，不会挡鼠标。
+    Tips.getInstance();
+
     this.subscriptionId = eventBus.on(
       BUFF_EVENT_BUFFS_CHANGED,
       (payload: { actor: Actor }) => {
