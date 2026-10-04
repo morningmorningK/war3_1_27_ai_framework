@@ -59,6 +59,19 @@ export function getRemainingSeconds(buff: Buff): number | null {
 }
 
 /**
+ * 图标暗幕进度 0~1：0 = 刚挂上（图标全亮），1 = 到期（图标全暗）。
+ * 永久 Buff 恒为 0 —— 没有倒计时，也就没有暗幕（todo.md「常驻类Buff无倒计时」）。
+ *
+ * 判 `<= 0` 而不是 `< 0`：`duration === 0` 是「挂上即到期」，拿它做除数会得到
+ * `Infinity` / `NaN`，那种 buff 一律当无暗幕处理。
+ */
+export function getBuffTimeProgress(buff: Buff): number {
+  if (buff.duration <= 0) return 0;
+  const p = buff.elapsed / buff.duration;
+  return p > 1 ? 1 : p < 0 ? 0 : p;
+}
+
+/**
  * 槽位角标：简短剩余时间。
  *
  * **常驻 Buff 返回空串**（而不是 "∞"）—— todo.md 「永久、常驻类 Buff 隐藏时间数字」。

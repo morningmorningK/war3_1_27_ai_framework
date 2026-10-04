@@ -43,8 +43,6 @@ function CreateUnits takes nothing returns nothing
 	local real life
 	set u = CreateUnit(Player(15),'ngme',-1792.0,832.0,270.0)
 	set u = CreateUnit(Player(15),'nfoh',-2496.0,448.0,270.0)
-	set u = CreateUnit(Player(0),'Uwar',-2141.9,605.6,204.8)
-	call SetHeroLevel(u, 10, false)
 	set u = CreateUnit(Player(0),'Edem',-2233.0,408.4,106.3)
 	call SetHeroLevel(u, 10, false)
 	call SelectHeroSkill(u, 'AEmb')

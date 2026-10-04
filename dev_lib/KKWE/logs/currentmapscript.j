@@ -384,7 +384,7 @@ endglobals
 //library BzAPI ends
 //library YDTriggerSaveLoadSystem:
 //#  define YDTRIGGER_handle(SG)                          YDTRIGGER_HT##SG##(HashtableHandle)
-    function YDTriggerSaveLoadSystem___Init takes nothing returns nothing
+    function YDTriggerSaveLoadSystem__Init takes nothing returns nothing
             set YDHT=InitHashtable()
         set YDLOC=InitHashtable()
     endfunction
@@ -423,8 +423,6 @@ function CreateUnits takes nothing returns nothing
  local real life
 	set u=CreateUnit(Player(15), 'ngme', - 1792.0, 832.0, 270.0)
 	set u=CreateUnit(Player(15), 'nfoh', - 2496.0, 448.0, 270.0)
-	set u=CreateUnit(Player(0), 'Uwar', - 2141.9, 605.6, 204.8)
-	call SetHeroLevel(u, 10, false)
 	set u=CreateUnit(Player(0), 'Edem', - 2233.0, 408.4, 106.3)
 	call SetHeroLevel(u, 10, false)
 	call SelectHeroSkill(u, 'AEmb')
@@ -529,7 +527,7 @@ function main takes nothing returns nothing
 	call CreateUnits()
 	call InitBlizzard()
 
-call ExecuteFunc("YDTriggerSaveLoadSystem___Init")
+call ExecuteFunc("YDTriggerSaveLoadSystem__Init")
 
 	call InitGlobals()
 	call InitCustomTriggers()

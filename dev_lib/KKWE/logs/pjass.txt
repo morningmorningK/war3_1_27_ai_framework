@@ -1,4 +1,4 @@
 Parse successful:     2418 lines: C:\MyGame\war_editor\wc3-map-ts-template-main\dev_lib\KKWE\plugin\jasshelper\common.j
 Parse successful:    10230 lines: C:\MyGame\war_editor\wc3-map-ts-template-main\dev_lib\KKWE\plugin\jasshelper\blizzard.j
-Parse successful:      563 lines: logs\currentmapscript.j
-Parse successful:    13211 lines: <total>
+Parse successful:      561 lines: logs\currentmapscript.j
+Parse successful:    13209 lines: <total>

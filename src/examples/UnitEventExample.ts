@@ -18,26 +18,25 @@ export function rgeisterUnitSpellEffectEvent(): void {
     });
   });
 
-  for (let j = 0; j < 5; j++) {
-    for (let i = 0; i < 5; i++) {
-      const unit = Actor.create(Players[j], FourCC("Hpal"), 0, 0);
-      if (unit == null) continue;
-      log.info("创建单位: " + unit.id);
+  // for (let j = 0; j < 1; j++) {
+  //   for (let i = 0; i < 2; i++) {
+  //     const unit = Actor.create(Players[3], FourCC("Hpal"), 0, 0);
+  //     if (unit == null) continue;
+  //     log.info("创建单位: " + unit.id);
 
-      // 只用 Actor 自定义血条；原生预选条要关掉，否则会叠出第二条。
-      unit.setPreselectUIVisible(false);
-      unit.createBloodBar();
-      // 名字不在这里设：没显式 setLabel 时血条自己取「英雄称谓 / 单位名」
-      // （`Actor.getLabel()` → `getDisplayName()`）。圣骑士会显示各自的英雄称谓。
+  //     // 只用 Actor 自定义血条；原生预选条要关掉，否则会叠出第二条。
+  //     unit.setPreselectUIVisible(false);
+  //     unit.createBloodBar();
+  //     // （`Actor.getLabel()` → `getDisplayName()`）。圣骑士会显示各自的英雄称谓。
 
-      unit.addAbility(FourCC("AUfn"));
-      unit.addAbility(FourCC("AHwe"));
+  //     unit.addAbility(FourCC("AUfn"));
+  //     unit.addAbility(FourCC("AHwe"));
 
-      unit.maxMana = 3000;
-      unit.mana = 3000;
-      unit.addShield(1000);
-    }
-  }
+  //     unit.maxMana = 3000;
+  //     unit.mana = 3000;
+  //     unit.addShield(1000);
+  //   }
+  // }
 
   // ---- 测试脚手架：普通（非英雄）单位 ----
   //
@@ -50,10 +49,12 @@ export function rgeisterUnitSpellEffectEvent(): void {
   //
   // 位置往北错开 350，免得和 (0,0) 上那 50 个英雄的堆叠糊在一起看不出效果。
   for (let i = 0; i < 6; i++) {
-    const unit = Actor.create(Players[0], FourCC("hfoo"), -300 + i * 120, 350);
+    const unit = Actor.create(Players[3], FourCC("hfoo"), -300 + i * 120, 350);
     if (unit == null) continue;
     unit.setPreselectUIVisible(false);
     unit.createBloodBar();
+    unit.maxMana = 1000
+    unit.mana = 1000;
     // 同上：步兵不是英雄，`getDisplayName()` 取单位名 —— 这里会显示「步兵」
   }
 }

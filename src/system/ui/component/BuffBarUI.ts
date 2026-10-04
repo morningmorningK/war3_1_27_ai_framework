@@ -13,6 +13,7 @@ import {
   BuffPolarity,
   buildBuffTooltipText,
   formatSlotTimeShort,
+  getBuffTimeProgress,
   registerDefaultBuffDisplays,
   resolveBuffDisplay,
 } from "src/system/buff";
@@ -22,6 +23,7 @@ import { eventBus } from "../../event/EventBus";
 import { gameEvents } from "../../event";
 import { ScreenCoordinates } from "../ScreenCoordinates";
 import { Tips, TipsAnimation, TipsPosition } from "./Tips";
+import { IconTimeCurtain } from "./IconTimeCurtain";
 import { onFrame } from "../FrameLoop";
 import { createLogger } from "src/utils/logger";
 
@@ -39,6 +41,14 @@ let nextBuffSlotNameId = 1;
 
 /** 槽位时间角标用字体（与 UnitBlood 一致，地图内已有资源） */
 const SLOT_TIME_FONT = "resource\\Texture\\ui\\hpbar\\ZiTi.TTf";
+
+/**
+ * 图标暗幕的不透明度（0~255）。
+ *
+ * 太透看不出还剩多少，太实又看不见图标本体 —— **这是整个暗幕唯一的调参旋钮**。
+ * 进游戏要调就改这一个数。
+ */
+const CURTAIN_ALPHA = 220;
 
 /**
  * `DzFrameSetTextAlignment` 的打包整数。
@@ -147,6 +157,13 @@ interface SlotComponentInfo {
 interface SlotFrames {
   border: Frame;
   icon: Frame;
+  /**
+   * 压在图标上的时间暗幕（线性，从上往下长）。**永久 Buff 上它是隐藏的**。
+   *
+   * z 序靠**创建顺序**决定，所以它必须建在 `icon` 之后、`timeText` 之前：
+   * 要盖住图标，但不能盖住时间数字/层数角标，更不能盖住 `hit`（否则悬停被挡）。
+   */
+  curtain: IconTimeCurtain;
   timeText: Frame;
   /** 右下角层数角标 */
   stackText: Frame;
@@ -363,6 +380,22 @@ export class BuffBarUI {
   }
 
   private clearSlots(): void {
+    // ⚠️ **必须主动把 Tips 收起来**，光清 `hoveredSlot` 不够。
+    //
+    // `Tips.hide()` 是挂在 `hit` 帧的 `onMouseLeave` 上的，而下面这个循环会把 `hit`
+    // **销毁** —— 帧一没，鼠标就算还停在原地也**再也不会触发 leave**，Tips 就永远
+    // 挂在屏幕上，正文冻在最后一帧。
+    //
+    // 2026-10-04 用户实测：盯着 buff 图标看，buff 到期后 Tooltip 不消失，
+    // 正文里那句「剩余时间：0.1 秒」原地定住。
+    //
+    // 判 `hoveredSlot !== undefined` 而不是无条件 hide：鼠标已经移开的情况
+    // `onMouseLeave` 早就 hide 过了，没必要再补一次（也就不必在这里碰
+    // `Tips.getInstance()`，避开在错误的上下文里把它建出来）。
+    if (this.hoveredSlot !== undefined) {
+      Tips.getInstance().hide();
+    }
+
     // 槽位马上要被销毁，指向它的悬停记录必须一起清掉：
     // 否则每帧的 `refreshHoveredTooltip` 会对着一个已经 release 的槽位写 Tips。
     this.hoveredSlot = undefined;
@@ -370,6 +403,7 @@ export class BuffBarUI {
       s.hit.destroy();
       s.stackText.destroy();
       s.timeText.destroy();
+      s.curtain.destroy();
       s.icon.destroy();
       s.border.destroy();
     }
@@ -446,6 +480,10 @@ export class BuffBarUI {
         slot.lastStackText = stackStr;
         slot.stackText.setText(stackStr);
       }
+
+      // 时间暗幕的高度。**组件内部自己去重**（值没变不碰 frame），
+      // 所以这里不必像上面两个角标那样再判一次「变了没」。
+      slot.curtain.setProgress(getBuffTimeProgress(slot.buff));
     }
   }
 
@@ -648,6 +686,26 @@ export class BuffBarUI {
         // 不是配色写错了；此时退回「只给正文上色」即可（正文那条路是已验证的）。
         .setVertexColor(DzGetColor(catColor.r, catColor.g, catColor.b, 255));
 
+      // 时间暗幕：建在 icon 之后、timeText 之前 —— 位置就是 z 序（见 `SlotFrames.curtain`）。
+      // 偏移直接抄 icon 自己的 padX / -padY，让暗幕和图标严丝合缝。
+      const curtain = IconTimeCurtain.create(
+        `BuffSlotCurtain_${nameId}_${i}`,
+        border,
+        {
+          width: wc3Icon.width,
+          height: wc3Icon.height,
+          offsetX: padX,
+          offsetY: -padY,
+        },
+        // 传**图标自己的贴图**：它会被乘成纯黑，结果是一块带图标轮廓的黑影。
+        // 理由（零新资源风险）见 `IconTimeCurtain` 的文件头。
+        def.icon,
+        CURTAIN_ALPHA
+      );
+      // 建完立刻给一次初始进度，别等下一帧：槽位重建（比如 buff 增减）那一瞬间
+      // 就该是满的，否则会看到它从 0 跳一下。
+      curtain.setProgress(getBuffTimeProgress(buff));
+
       // 剩余时间：铺满整个槽位 + 居中对齐 → 数字落在图标正中。
       // 这里**必须**用两个锚点把 frame 撑成槽位大小，不能再用「单点 + setSize」：
       // TEXT frame 会按文字自身宽度收缩（`UnitBlood.ts:185` 那段注释就是拿这一点当特性用的），
@@ -710,6 +768,7 @@ export class BuffBarUI {
       const slot: SlotFrames = {
         border,
         icon,
+        curtain,
         timeText,
         stackText,
         hit,

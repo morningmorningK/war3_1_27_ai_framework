@@ -12,6 +12,7 @@ import { UnitBlood } from "./system/ui/component/UnitBlood";
 import { NativeUISystem } from "./system/ui/gameui";
 import { registerDefaultRelicsAndPools } from "./system/relic";
 import { BuffBarUI } from "./system/ui/component/BuffBarUI";
+import { CommandCardCooldownUI } from "./system/ui/component/CommandCardCooldownUI";
 import { RelicBarUI } from "./system/ui/component/RelicBarUI";
 import { UnitBloodToggleUI } from "./system/ui/component/UnitBloodToggleUI";
 import { relicSystemTestExample } from "./test/RelicSystemTestExample";
@@ -124,6 +125,16 @@ export function initialize(): void {
     BuffBarUI.getInstance().bindFollowLocalSelection();
   } catch (e) {
     log.error(`BuffBarUI.bindFollowLocalSelection() 抛出异常，已隔离：${e}`);
+  }
+
+  // 原生命令卡技能按钮上的线性冷却暗幕（复用 Buff 栏那个 IconTimeCurtain）。
+  // **不需要 bind 选中事件** —— 它每帧直接问 `DzGetSelectedLeaderUnit()`，
+  // 那个单位天然就是命令卡所对应的单位（理由见该文件头）。
+  // 包 try/catch 的理由同上：这里抛出去后面所有 system 的 init 都不会执行。
+  try {
+    CommandCardCooldownUI.getInstance().create();
+  } catch (e) {
+    log.error(`CommandCardCooldownUI.create() 抛出异常，已隔离：${e}`);
   }
 
   // 头顶血条的分类开关（右上角两个按钮）。

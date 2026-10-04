@@ -14,6 +14,7 @@ export {
   getBuffDisplay,
   resolveBuffDisplay,
   getRemainingSeconds,
+  getBuffTimeProgress,
   formatSlotTimeShort,
   buildBuffTooltipText,
 } from "./BuffDisplayRegistry";
