@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "maps/map/"
+  },
+  "tstl": {
+    "luaTarget": "5.3",
+    "noHeader": true,
+    "noImplicitSelf": true,
+    "luaLibImport": "inline",
+    "luaBundle": "main.lua",
+    "luaBundleEntry": "src/main.ts",
+    "noResolvePaths": [
+      "jass.common",
+      "jass.ai",
+      "jass.globals",
+      "jass.japi",
+      "jass.hook",
+      "jass.runtime",
+      "jass.slk",
+      "jass.console",
+      "jass.debug",
+      "jass.log",
+      "jass.runtime",
+      "jass.message",
+      "jass.bignum"
+    ]
+  }
+}

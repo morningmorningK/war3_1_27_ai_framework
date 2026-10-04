@@ -1,0 +1,27 @@
+node_modules
+
+temp
+
+dev_lib/w3x2lni/log/report.log
+dist/*
+*.log
+*.w3x
+*.w3m
+
+mpq/*
+
+# Yarn Berry - 保留 releases 目录（包含 yarn 可执行文件）
+.yarn/cache
+.yarn/install-state.gz
+!.yarn/releases
+!.yarn/plugins
+
+main.lua
+
+
+常见的可用的背景路径.txt
+reference
+
+图片素材
+callback
+resource

@@ -1,0 +1,10 @@
+IncludeFile "UI\FrameDef\Glue\StandardTemplates.fdf",
+Frame "BACKDROP" "tooltip_backdrop" {
+    BackdropTileBackground,
+    BackdropBackgroundInsets 0.002 0.002 0.002 0.002,
+    BackdropBackground "UI\Widgets\ToolTips\Human\human-tooltip-background.blp",
+    BackdropCornerFlags "UL|UR|BL|BR|T|L|B|R",
+    BackdropCornerSize 0.01,
+    BackdropEdgeFile "UI\Widgets\BattleNet\bnet-dialoguebox-border.blp",
+    BackdropBlendAll,
+}

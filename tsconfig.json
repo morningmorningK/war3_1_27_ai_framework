@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": [
+      "esnext"
+    ],
+    "moduleResolution": "bundler",
+    "preserveSymlinks": true,
+    "baseUrl": ".",
+    "paths": {
+      "@eiriksgata/wc3ts/*": [
+        "node_modules/@eiriksgata/wc3ts/src"
+      ],
+      "tstl-damage-calculator": [
+        "node_modules/tstl-damage-calculator/src"
+      ]
+    },
+    "types": [
+      "@eiriksgata/wc3ts/src/types",
+      "lua-types/5.3"
+    ],
+    "strict": true,
+    "outDir": "dist/"
+  },
+  "tstl": {
+    "luaTarget": "5.3",
+    "noHeader": true,
+    "noImplicitSelf": true,
+    "luaLibImport": "require",
+    "noResolvePaths": [
+      "jass.common",
+      "jass.ai",
+      "jass.globals",
+      "jass.japi",
+      "jass.hook",
+      "jass.runtime",
+      "jass.slk",
+      "jass.console",
+      "jass.debug",
+      "jass.log",
+      "jass.runtime",
+      "jass.message",
+      "jass.bignum"
+    ]
+  },
+  "include": [
+    "src",
+    "node_modules/@eiriksgata/wc3ts/src",
+    "node_modules/tstl-damage-calculator/src"
+  ]
+}

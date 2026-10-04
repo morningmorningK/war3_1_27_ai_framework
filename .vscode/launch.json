@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "test:map",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/test.ts",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "autoAttachChildProcesses": false,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "env": {
+        "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.node.json"
+      }
+    }
+  ]
+}

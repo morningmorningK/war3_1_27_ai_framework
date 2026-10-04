@@ -1,0 +1,6614 @@
+﻿[KKAPISetLocalVariables]
+title = "设置【真】局部变量"
+description = "设置 [${类型}] ${变量名} = ${null}"
+comment = "注意此为真局部变量，不能穿透计时器和触发."
+category = TC_KKAPI
+[[.args]]
+type = typename
+[[.args]]
+type = scriptcode
+[[.args]]
+type = Null
+
+[KKAPISetAnyTypeLocalArray]
+title = "设置【真】局部变量数组 [New]"
+description = "设置 [${类型}] loc_${变量名}[${索引}] = ${null}"
+comment = "设置局部变量数组，注意: 数组不能穿透逆天计时器、逆天触发器"
+category = TC_KKAPI
+[[.args]]
+type = typename
+[[.args]]
+type = scriptcode
+[[.args]]
+type = integer
+default = 0
+[[.args]]
+type = Null
+
+[DzSetUnitPreselectUIVisible]
+title = "设置单位的鼠标指向UI和血条显示/隐藏"
+description = "设置 ${单位} 的鼠标指向UI和血条 ${显示}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = showhideoption
+
+[DzSetEffectModel]
+title = "设置特效模型"
+description = "设置 ${特效} 的模型： ${modelFile}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = modelfile
+
+[DzSetEffectTeamColor]
+title = "设置特效队伍颜色"
+description = "设置 ${特效} 的队伍颜色： ${Color}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = playercolorid
+default = "Color00"
+
+[DzSetEffectAnimation]
+title = "设置特效播放动画"
+description = "设置 ${特效} 播放第 ${编号} 号动画，播放方式${方式} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+
+[DzPlayEffectAnimation]
+title = "设置特效播放动画"
+description = "设置 ${特效} 播放 ${death} 动画，附加动画链接名 ${alternate}"
+comment = "变身动画才需要附加链接名 一般情况填 “” 空字符串就行"
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = string
+[[.args]]
+type = string
+
+[DzBindEffect]
+title = "绑定特效"
+description = "在 ${单位} 附着点 ${origin} 绑定特效 ${特效}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = string
+[[.args]]
+type = effect
+
+[DzUnbindEffect]
+title = "解除绑定特效"
+description = "解除绑定的特效 ${特效}"
+comment = "可以让绑定在单位身上的特效分离出来，被分离的特效能设置坐标、缩放"
+category = TC_KKAPI
+[[.args]]
+type = effect
+
+[DzSetWidgetSpriteScale]
+title = "单位缩放"
+description = "设置 ${单位} 的缩放为 ${scale} "
+comment = "可以用来缩放单位"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+
+[DzSetEffectScale]
+title = "特效缩放"
+description = "设置 ${特效} 的缩放为 ${scale} "
+comment = "可以用来缩放特效"
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = real
+
+[DzSetEffectPos]
+title = "设置特效坐标"
+description = "设置 ${特效} 的坐标（ ${x},${y},${z}）"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzSetEffectVertexColor]
+title = "设置特效颜色"
+description = "设置 ${特效} 的颜色：${color} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = rgba2color
+default = "DzGetColor"
+
+[DzSetEffectVertexAlpha]
+title = "设置特效透明度"
+description = "设置 ${特效} 的透明度：${alpha} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = integer
+default = "255"
+
+[DzSetEffectVisible]
+title = "特效显示/隐藏"
+description = "设置 ${whichEffect}  ${Show/Hide}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = showhideoption
+default = "ShowHideHide"
+
+[DzFrameSetClip]
+title = "设置控件视口"
+description = "设置 ${frame} 的视口为 ${状态}"
+comment = "设置控件视口后，他的子控件在边缘超出部分不会显示"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = onoffoption
+default = OnOffOn
+
+[DzChangeWindowSize]
+title = "设置魔兽窗口大小"
+description = "设置魔兽窗口大小：${宽}/${高}"
+comment = "如修改窗口模式下的窗口大小为 1920/1080"
+category = TC_KKAPI
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+
+[DzUnlockBlpSizeLimit]
+title = "解锁BLP像素限制"
+description = "解锁BLP像素限制：${true}"
+comment = "填true会解除原本魔兽高清图片的512像素限制"
+category = TC_KKAPI
+[[.args]]
+type = boolean
+
+[DzToggleFPS]
+title = "设置FPS显示/隐藏"
+description = "设置 FPS ${显示/隐藏}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = showhideoption
+default = ShowHideShow
+
+[DzModelRemoveFromCache]
+title = "清除模型内存缓存"
+description = "清除模型 ${模型} 内存缓存"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = modelfile
+
+[DzModelRemoveAllFromCache]
+title = "清除所有模型内存缓存"
+description = "清除所有模型内存缓存"
+comment = ""
+category = TC_KKAPI
+
+[DzWidgetSetMinimapIcon]
+title = "自定义指定单位的小地图图标"
+description = "设置指定 ${单位} 的小地图图标：${imagefile}"
+comment = "图标大小只支持16×16，设置图标之前需要开启：中立建筑 - 小地图特殊标志"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = imagefile
+
+[DzWidgetSetMinimapIconEnable]
+title = "开启/关闭自定义指定单位的小地图图标"
+description = "设置 ${单位} ${On/Off} 自定义小地图图标"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = onoffoption
+default = "OnOffOn"
+
+[DzSimpleMessageFrameAddMessage]
+title = "显示游戏提示信息"
+description = "设置 ${消息界面} 显示 ${消息} 颜色：${颜色}，持续 ${时间} 秒，${是/否}永久显示"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = string
+[[.args]]
+type = rgba2color
+default = "DzGetColor"
+[[.args]]
+type = real
+[[.args]]
+type = YESNO
+default = "NO"
+
+[DzSimpleMessageFrameClear]
+title = "清理游戏提示信息"
+description = "清理 ${消息界面} 的游戏提示信息"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = frame
+
+[DzRegisterOnBuildLocal]
+title = "监听建筑选位置"
+description = "监听建筑选位置"
+comment = ""
+category = TC_KKAPI
+
+[DzRegisterOnTargetLocal]
+title = "监听技能预选目标"
+description = "监听技能预选目标"
+comment = ""
+category = TC_KKAPI
+
+[DzOpenQQGroupUrl]
+title = "打开QQ群链接"
+description = "打开QQ群链接：${地址}"
+comment = "必须包括http://qm.qq.com开头的QQ群链接，调用后触发玩家加群，注意每分钟只能触发一次。"
+category = TC_KKAPI
+[[.args]]
+type = string
+
+[DzSetClipboard]
+title = "设置剪切板 [NEW]"
+description = "设置剪切板 ${内容}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = string
+
+[DzFrameEnableClipRect]
+title = "游戏界面限制设置"
+description = "界面 ${是/否} 限制在游戏窗口内"
+comment = "当为 ‘否’ 时游戏里的界面可以拖到游戏外面 "
+category = TC_KKAPI
+[[.args]]
+type = YESNO
+default = "YES"
+
+[DzSetUnitName]
+title = "设置单位名字"
+description = "设置 ${单位} 名字：${name} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = string
+
+[DzSetUnitProperName]
+title = "设置英雄称谓"
+description = "设置 ${英雄} 称谓：${name} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = string
+
+[DzSetUnitDescription]
+title = "设置单位描述"
+description = "设置 ${单位} 的描述： ${value} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = string
+
+[DzSetUnitPortrait]
+title = "设置单位头像模型"
+description = "设置 ${单位} 头像模型：${modelFile} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = modelfile
+
+[DzSetUnitMissileModel]
+title = "设置单位普攻弹道模型"
+description = "设置 ${单位} 普攻弹道模型：${modelFile} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = modelfile
+
+[DzSetUnitMissileArc]
+title = "设置单位普攻弹道弧度"
+description = "设置 ${单位} 普攻弹道弧度：${arc} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+
+[DzSetUnitMissileHoming]
+title = "设置单位普攻弹道自导允许"
+description = "设置 ${单位} 普攻弹道自导：${enable} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = boolean
+
+[DzSetUnitMissileSpeed]
+title = "设置单位普攻弹道速度"
+description = "设置 ${单位} 普攻弹道速度：${seed} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+
+[DzReviveUnit]
+title = "复活单位"
+description = "设置 ${whichUnit} 复活为 ${whichPlayer} 的单位，生命值：${hp}，魔法值：${mp}，坐标(${x},${y})"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = player
+[[.args]]
+type = real
+min = 0
+[[.args]]
+type = real
+min = 0
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzAttackAbilityEndCooldown]
+title = "结束普攻技能CD"
+description = "结束普攻 ${whichAbility} 的技能CD"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = ability
+
+[DzDoodadCreate]
+title = "新建地形装饰物"
+description = "创建 ${doodadid} 样式：${var} 坐标：(${x}，${Y}，${z}) 角度：${rotate} 缩放：${scale}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodadcode
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = degree
+default = "GetRandomDirectionDeg"
+[[.args]]
+type = real
+default = "1"
+
+[DzDoodadRemove]
+title = "删除装饰物  [NEW]"
+description = "删除 ${doodad} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+
+[DzDoodadSetModel]
+title = "设置装饰物模型"
+description = "设置 ${doodad} 的模型：${modelFile} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+[[.args]]
+type = modelfile
+
+[DzDoodadSetTeamColor]
+title = "改变装饰物队伍颜色"
+description = "改变 ${doodad} 的队伍颜色：${Color}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+[[.args]]
+type = playercolorid
+default = "Color00"
+
+[DzDoodadSetColor]
+title = "设置装饰物颜色"
+description = "设置 ${doodad} 的颜色：${color} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+[[.args]]
+type = rgba2color
+default = "DzGetColor"
+
+[DzDoodadSetPosition]
+title = "设置装饰物位置"
+description = "设置 ${doodad} 的坐标：(${x}，${Y}，${z})"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "0"
+
+[DzDoodadSetOrientMatrixRotate]
+title = "设置装饰物旋转"
+description = "设置 ${doodad} 旋转，角度：${rotate} 方向：(${axisX}，${axisY}，${axisZ})"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+[[.args]]
+type = degree
+default = "GetRandomDirectionDeg"
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "0"
+
+[DzDoodadSetOrientMatrixScale]
+title = "修改装饰物尺寸"
+description = "设置 ${doodad} 缩放：(${x}，${y}，${z})"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "0"
+
+[DzDoodadSetOrientMatrixResize]
+title = "装饰物重置大小"
+description = "设置 ${doodad} 重置大小"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+
+[DzDoodadSetVisible]
+title = "装饰物显示/隐藏"
+description = "设置 ${doodad} ${Show/Hide}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+[[.args]]
+type = showhideoption
+default = "ShowHideHide"
+
+[DzDoodadSetAnimation]
+title = "装饰物播放动画"
+description = "设置 ${doodad} 播放${Animation Name}  随机播放${inNoAnim}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+[[.args]]
+type = string
+default = "\"death\""
+[[.args]]
+type = boolean
+
+[DzDoodadSetTimeScale]
+title = "设置装饰物动画播放速度"
+description = "设置 ${doodad} 的动画播放速度为正常速度的 ${Percent} 倍"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = doodad
+[[.args]]
+type = real
+default = "1"
+min = 0
+
+[DzAbilitySetStringData]
+title = "设置技能数据-字符串"
+description = "设置 ${技能} 的字符串 ${名字} 数据为 ${内容}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = ability
+[[.args]]
+type = string
+[[.args]]
+type = string
+
+[DzAbilitySetEnable]
+title = "设置技能启用/禁用"
+description = "设置 ${技能} 的启用状态为 ${启用} ，隐藏UI为 ${隐藏}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = ability
+[[.args]]
+type = boolean
+[[.args]]
+type = boolean
+default = "false"
+
+[DzUnitSetMoveType]
+title = "设置单位实例的移动类型"
+description = "设置 ${单位} 实例的移动类型为 ${Value}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+default = "GetTriggerUnit"
+[[.args]]
+type = MoveTypeName
+default = "MoveTypeName01"
+
+[KKWESetObjectTableData]
+title = "【对象表】设置数据"
+description = "【对象表】设置 [${类型}] ${null} 的 [${类型}]${null} 的数据 [${类型}] ${null} "
+comment = "设置某个对象为表主目录和子目录下存储的数据。"
+category = TC_KKAPI
+[[.args]]
+type = typename
+[[.args]]
+type = Null
+[[.args]]
+type = typename
+[[.args]]
+type = Null
+[[.args]]
+type = typename
+[[.args]]
+type = Null
+
+[KKWEFlushObjectTableData]
+title = "【对象表】清除数据"
+description = "【对象表】 清除 [${类型}] ${null}  的 [${类型}] ${null} 的 ${属性} 数据"
+comment = "清空某个数据的某项自定义属性。"
+category = TC_KKAPI
+[[.args]]
+type = typename
+[[.args]]
+type = Null
+[[.args]]
+type = typename
+[[.args]]
+type = Null
+[[.args]]
+type = typename
+
+[DzFrameSetAnimateByIndex]
+title = "设置模型界面播放动画（编号）"
+description = "设置 ${模型界面} 播放第 ${index}）个动画，播放方式${flag}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = integer
+default = 0
+[[.args]]
+type = integer
+default = 0
+
+
+[KKWESetUnitDataCacheInteger]
+title = "设置单位整数物编数据"
+description = "设置 ${单位} 的 ${id} 数值为 ${data}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = UnitCacheIntegerData
+[[.args]]
+type = integer
+
+[KKWEUnitUIAddUpgradesIds]
+title = "设置单位物编数据(建筑升级)"
+description = "设置 ${单位} 的第 ${id} 个建筑升级 ${单位类型}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = unitcode
+
+[KKWEUnitUIAddBuildsIds]
+title = "设置单位物编数据(农民可建造建筑)"
+description = "设置 ${单位} 的第 ${id} 个可建造建筑 ${单位类型}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = unitcode
+
+[KKWEUnitUIAddResearchesIds]
+title = "设置单位物编数据(可研究的科技)"
+description = "设置 ${单位} 的第 ${id} 个可研究的科技 ${科技类型}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = techcode
+
+[KKWEUnitUIAddTrainsIds]
+title = "设置单位物编数据(可训练的单位)"
+description = "设置 ${单位} 的第 ${id} 个可训练的单位 ${单位类型}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = unitcode
+
+[KKWEUnitUIAddSellsUnitIds]
+title = "设置单位物编数据(出售的单位)"
+description = "设置 ${单位} 的第 ${id} 个可出售的单位 ${单位类型}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = unitcode
+
+[KKWEUnitUIAddSellsItemIds]
+title = "设置单位物编数据(出售的物品)"
+description = "设置 ${单位} 的第 ${id} 个可出售的物品 ${物品类型}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = itemcode
+
+[KKWEUnitUIAddMakesItemIds]
+title = "设置单位物编数据(制造的物品)"
+description = "设置 ${单位} 的第 ${id} 个可制造的物品 ${物品类型}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = itemcode
+
+[KKWEUnitUIAddRequiresUnitCode]
+title = "设置单位物编数据(科技需求)[单位]"
+description = "设置 ${单位} 的第 ${id} 个科技需求 ${单位类型}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = unitcode
+
+[KKWEUnitUIAddRequiresTechcode]
+title = "设置单位物编数据(科技需求)[科技]"
+description = "设置 ${单位} 的第 ${id} 个科技需求 ${科技类型}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = techcode
+
+[KKWEUnitUIAddRequiresAmounts]
+title = "设置单位物编数据(科技需求值)"
+description = "设置 ${单位} 的第 ${id} 个科技需求值 ${数量}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+
+[DzItemSetModel]
+title = "设置物品模型 [NEW]"
+description = "设置 ${whichItem} 的模型：${modelFile} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = item
+[[.args]]
+type = modelfile
+
+[DzItemSetPortrait]
+title = "设置物品头像 [NEW]"
+description = "设置 ${whichItem} 的头像：${modelFile} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = item
+[[.args]]
+type = modelfile
+
+[DzItemSetVertexColor]
+title = "设置物品颜色 [NEW]"
+description = "设置 ${whichItem} 的颜色：${color} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = item
+[[.args]]
+type = rgba2color
+default = "DzGetColor"
+
+[DzItemSetAlpha]
+title = "设置物品透明度(0-255) [NEW]"
+description = "设置 ${whichItem} 的透明度为 ${alpha}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = item
+[[.args]]
+type = integer
+default = "255"
+
+[DzUnlockOpCodeLimit]
+title = "解锁JASS字节码限制 [NEW]"
+description = " ${是/否} 解锁JASS字节码限制"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = YESNO
+default = "NO"
+
+[DzRemovePlayerTechResearched]
+title = "降低玩家科技等级 [NEW]"
+description = " 降低${玩家} 的 ${科技} ${等级} 个等级"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = techcode
+[[.args]]
+type = integer
+
+[DzFrameHookHpBar]
+title = "血条刷新事件 [NEW]"
+description = "血条刷新事件"
+comment = ""
+category = TC_KKAPI
+
+[DzWriteLog]
+title = "打印调试信息到平台日志 [NEW]"
+description = "打印 ${信息} 到平台日志"
+comment = "用于调试，打印信息到平台日志文件"
+category = TC_KKAPI
+[[.args]]
+type = string
+
+[DzTextTagSetFont]
+title = "设置漂浮文字字体 [NEW]"
+description = "设置漂浮文字字体：${font}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = string
+
+[DzTextTagSetStartAlpha]
+title = "设置漂浮文字透明度 [NEW]"
+description = "设置 ${漂浮文字} 透明度：${alpha}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = texttag
+[[.args]]
+type = integer
+
+[DzTextTagSetShadowColor]
+title = "设置漂浮文字阴影颜色 [NEW]"
+description = "设置 ${漂浮文字} 阴影颜色：${color}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = texttag
+[[.args]]
+type = rgba2color
+default = "DzGetColor"
+
+[DzQueueGroupImmediateOrderById]
+title = "对单位组添加命令到队列(无目标) [NEW]"
+description = "对单位组 ${whichGroup} 添加 ${order} 命令到队列"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = group
+[[.args]]
+type = ordercodenotarg
+
+[DzQueueGroupPointOrderById]
+title = "对单位组添加命令到队列(指定坐标) [NEW]"
+description = "对单位组 ${whichGroup} 添加 ${order} 命令到队列，位置 (${x}, ${y}) "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = group
+[[.args]]
+type = ordercodeptarg
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzQueueGroupTargetUnitOrderById]
+title = "对单位组添加命令到队列(指定单位) [NEW]"
+description = "对单位组 ${whichGroup} 添加 ${order} 命令到队列，目标 ${targetWidget}"
+comment = ""
+script_name = DzQueueGroupTargetOrderById
+category = TC_KKAPI
+[[.args]]
+type = group
+[[.args]]
+type = ordercodeutarg
+[[.args]]
+type = unit
+
+[DzQueueGroupTargetDestructableOrderById]
+title = "对单位组添加命令到队列(指定可破坏物) [NEW]"
+description = "对单位组 ${whichGroup} 添加 ${order} 命令到队列，目标 ${targetWidget}"
+comment = ""
+script_name = DzQueueGroupTargetOrderById
+category = TC_KKAPI
+[[.args]]
+type = group
+[[.args]]
+type = ordercodedtarg
+[[.args]]
+type = destructable
+
+[DzQueueGroupTargetItemOrderById]
+title = "对单位组添加命令到队列(指定物品) [NEW]"
+description = "对单位组 ${whichGroup} 添加 ${order} 命令到队列，目标 ${targetWidget}"
+comment = ""
+script_name = DzQueueGroupTargetOrderById
+category = TC_KKAPI
+[[.args]]
+type = group
+[[.args]]
+type = ordercodeitarg
+[[.args]]
+type = item
+
+[DzQueueIssueImmediateOrderById]
+title = "对单位添加命令到队列(无目标) [NEW]"
+description = "对单位 ${whichUnit} 添加 ${order} 命令到队列"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = ordercodenotarg
+
+[DzQueueIssuePointOrderById]
+title = "对单位添加命令到队列(指定坐标) [NEW]"
+description = "对单位 ${whichUnit} 添加 ${order} 命令到队列，位置 (${x}, ${y}) "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = ordercodeptarg
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzQueueIssueTargetUnitOrderById]
+title = "对单位添加命令到队列(指定单位) [NEW]"
+description = "对单位 ${whichUnit} 添加 ${order} 命令到队列，目标 ${targetWidget}"
+comment = ""
+script_name = DzQueueIssueTargetOrderById
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = ordercodeutarg
+[[.args]]
+type = unit
+
+[DzQueueIssueTargetDestructableOrderById]
+title = "对单位添加命令到队列(指定可破坏物) [NEW]"
+description = "对单位 ${whichUnit} 添加 ${order} 命令到队列，目标 ${targetWidget}"
+comment = ""
+script_name = DzQueueIssueTargetOrderById
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = ordercodedtarg
+[[.args]]
+type = destructable
+
+[DzQueueIssueTargetItemOrderById]
+title = "对单位添加命令到队列(指定物品) [NEW]"
+description = "对单位 ${whichUnit} 添加 ${order} 命令到队列，目标 ${targetWidget}"
+comment = ""
+script_name = DzQueueIssueTargetOrderById
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = ordercodeitarg
+[[.args]]
+type = item
+
+[DzQueueIssueNeutralImmediateOrderById]
+title = "添加中介命令到队列(无目标) [NEW]"
+description = "使 ${forWhichPlayer} 对 ${neutralStructure} 添加 ${unitId} 命令到队列"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = unit
+[[.args]]
+type = ordercodenotarg
+
+[DzQueueIssueNeutralPointOrderById]
+title = "添加中介命令到队列(指定坐标) [NEW]"
+description = "使 ${forWhichPlayer} 对 ${neutralStructure} 添加 ${unitId} 命令到队列，位置 (${x}, ${y})"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = unit
+[[.args]]
+type = ordercodeptarg
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzQueueIssueNeutralTargetUnitOrderById]
+title = "添加中介命令到队列(指定单位) [NEW]"
+description = "使 ${forWhichPlayer} 对单位 ${neutralStructure} 添加 ${unitId} 命令到队列，目标 ${TargetWidget}"
+comment = ""
+script_name=DzQueueIssueNeutralTargetOrderById
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = unit
+[[.args]]
+type = ordercodeutarg
+[[.args]]
+type = unit
+
+[DzQueueIssueNeutralTargetDestructableOrderById]
+title = "添加中介命令到队列(指定可破坏物) [NEW]"
+description = "使 ${forWhichPlayer} 对单位 ${neutralStructure} 添加 ${unitId} 命令到队列，目标 ${TargetWidget}"
+comment = ""
+script_name=DzQueueIssueNeutralTargetOrderById
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = unit
+[[.args]]
+type = ordercodedtarg
+[[.args]]
+type = destructable
+
+[DzQueueIssueNeutralTargetItemOrderById]
+title = "添加中介命令到队列(指定物品) [NEW]"
+description = "使 ${forWhichPlayer} 对单位 ${neutralStructure} 添加 ${unitId} 命令到队列，目标 ${TargetWidget}"
+comment = ""
+script_name=DzQueueIssueNeutralTargetOrderById
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = unit
+[[.args]]
+type = ordercodeitarg
+[[.args]]
+type = item
+
+[DzQueueIssueBuildOrderById]
+title = "对单位添加建造命令到队列 [NEW]"
+description = "对单位 ${whichPeon} 添加建造 ${unitId} 命令到队列，位置 (${x}, ${y})"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = unitcode
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitOrdersReverse]
+title = "反转单位命令队列 [NEW]"
+description = "反转 ${u} 命令队列"
+comment = "原本单位添加命令队列后，会"
+category = TC_KKAPI
+[[.args]]
+type = unit
+
+[DzUnitOrdersClear]
+title = "清除单位命令队列 [NEW]"
+description = "清除单位 ${u} 命令，清理规则： ${b} 仅清理队列里的命令"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = boolean
+
+[DzUnitOrdersExec]
+title = "执行单位的命令队列 [NEW]"
+description = "执行单位 ${u} 的命令队列"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+
+[DzUnitOrdersForceStop]
+title = "强制停止单位当前命令 [NEW]"
+description = "强制停止单位 ${u} 的当前命令，${b} 清理队列里的命令"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = boolean
+
+[DzXlsxClose]
+title = "关闭工作表 [NEW]"
+description = "关闭工作表：${docHandle}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = xlsxworksheet
+
+[NewSoundEnvironment]
+title = "设置环境音效 [new]"
+description = "设置环境音效为 ${environmentName}"
+comment = ""
+category = TC_SOUND
+[[.args]]
+type = SoundEnvironment
+
+[SetSoundParamsFromLabel]
+title = "设置声音标签 [new]"
+description = "设置 ${soundLabel} 的标签：${soundHandle}"
+comment = ""
+category = TC_SOUND
+[[.args]]
+type = sound
+[[.args]]
+type = string
+
+[SetSoundChannel]
+title = "设置声音的声道 [new]"
+description = "设置 ${soundHandle} 的声道：${channel}"
+comment = ""
+category = TC_SOUND
+[[.args]]
+type = sound
+[[.args]]
+type = SoundChannel
+
+[SetSoundConeAngles]
+title = "设置声音的角度 [new]"
+description = "设置 ${soundHandle} 的内圆锥角度： ${inside}，外圆锥角度：${outside}，外圆锥音量：${outsideVolume}"
+comment = ""
+category = TC_SOUND
+[[.args]]
+type = sound
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+
+[SetSoundConeOrientation]
+title = "设置声音的传播方向 [new]"
+description = "设置 ${soundHandle} 的传播方向(${x}, ${y}, ${z})"
+comment = ""
+category = TC_SOUND
+[[.args]]
+type = sound
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[SetSoundVelocity]
+title = "设置声音的速度 [new]"
+description = "设置 ${soundHandle} 的速度设置为 (${x}, ${y}, ${z})"
+comment = ""
+category = TC_SOUND
+[[.args]]
+type = sound
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[RegisterStackedSound]
+title = "注册堆叠音效 [new]"
+description = "设置 ${soundHandle} 的堆叠，是否按位置来处理堆叠：${byPosition},堆叠区域的宽度：${rectwidth}, 堆叠区域的高度：${rectheight}"
+comment = ""
+category = TC_SOUND
+[[.args]]
+type = sound
+[[.args]]
+type = boolean
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[UnregisterStackedSound]
+title = "取消注册的堆叠音效设置 [new]"
+description = "取消 ${soundHandle} 的堆叠，是否按位置来处理堆叠：${byPosition},堆叠区域的宽度：${rectwidth}, 堆叠区域的高度：${rectheight}"
+comment = ""
+category = TC_SOUND
+[[.args]]
+type = sound
+[[.args]]
+type = boolean
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzFrameSetTexCoord]
+title = "设置界面纹理坐标 [NEW]"
+description = "设置 ${frame} 的纹理坐标为 (${left}, ${top}, ${right}, ${bottom})"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityRange]
+title = "技能 - 设置技能施法距离"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的施法距离 ${range} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+[DzSetUnitAbilityArea]
+title = "技能 - 设置技能施法范围"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的施法范围 ${area} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+[DzSetUnitAbilityCool]
+title = "技能 - 设置技能冷却时间"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的当前冷却时间 ${cool} /最大冷却时间 ${max_cool} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+
+
+[DzSetUnitAbilityDataA]
+title = "技能 - 设置技能数据A"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的数据A ${DataA} "
+comment = [[通魔的数据A是施法持续时间;单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+
+[DzSetUnitAbilityDataB]
+title = "技能 - 设置技能数据B"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的数据B ${DataB} "
+comment = [[通魔的数据B是目标类型;0无目标;1目标单位;2目标点;3目标单位或点;单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityDataC]
+title = "技能 - 设置技能数据C"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的数据C ${DataC} "
+comment = [[通魔的数据C是选项;单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityDataD]
+title = "技能 - 设置技能数据D"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的数据D ${DataD} "
+comment = [[通魔的数据D是动作持续时间;单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityDataE]
+title = "技能 - 设置技能数据E"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的数据E ${DataE} "
+comment = [[通魔的数据E是否使其他技能失效;单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityDataF]
+title = "技能 - 设置技能数据F"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的数据F ${DataF} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;所有技能共享同一组Data位置,不同技能类型通过不同fieldId映射,如无效果可以尝试刷新数据]]
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityDataG]
+title = "技能 - 设置技能数据G"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的数据G ${DataG} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;所有技能共享同一组Data位置,不同技能类型通过不同fieldId映射,如无效果可以尝试刷新数据]]
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityDataH]
+title = "技能 - 设置技能数据H"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的数据H ${DataH} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;所有技能共享同一组Data位置,不同技能类型通过不同fieldId映射,如无效果可以尝试刷新数据]]
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityDataI]
+title = "技能 - 设置技能数据I"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的数据I ${DataI} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;所有技能共享同一组Data位置,不同技能类型通过不同fieldId映射,如无效果可以尝试刷新数据]]
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+[DzSetUnitAbilityButtonPos]
+title = "技能 - 设置技能按钮位置"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的按钮X轴 ${X} , Y轴 ${Y} "
+comment = [[x轴0~3, y轴0~2且 y轴-11可以隐藏技能;单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+
+
+[DzSetUnitAbilityHotkey]
+title = "技能 - 设置技能快捷键"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的按钮快捷键 ${Hotkey} "
+comment = [[必须显示在按钮上的技能才有效,单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = string
+
+
+[DzSetUnitAbilityTargs]
+title = "技能 - 设置技能目标允许"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的目标允许 ${Targs} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = integer
+
+
+[DzSetUnitAbilityCost]
+title = "技能 - 设置技能魔法消耗"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的魔法消耗 ${Cost} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = integer
+
+[DzSetUnitAbilityReqLevel]
+title = "技能 - 设置技能等级要求"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的等级要求 ${ReqLevel} "
+comment = [[2级以上可以无视魔法免疫;单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;保证通魔技能有效,其他类型的技能也可以尝试使用不保证有效, 如无效果可以尝试刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = integer
+
+
+[DzSetUnitAbilityUnitId]
+title = "技能 - 设置建造技能单位ID（象牙塔）"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的单位id ${UnitId} "
+comment = [[用在象牙塔或变身类技能;单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = integer
+
+[DzSetUnitAbilityBuildOrderId]
+title = "技能 - 设置建造技能命令ID（象牙塔）"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的命令id ${OrderId} "
+comment = [[用在象牙塔类的技能;单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = ordercode
+
+[DzSetUnitAbilityBuildModel]
+title = "技能 - 设置建造技能模型（象牙塔）"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 模型 ${model} 缩放 ${scale} "
+comment = [[修改建造时鼠标模型，不改单位;用在象牙塔类的技能;单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除;]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = string
+[[.args]]
+type = real
+
+
+[KKDestroyCommandButton]
+title = "技能按钮 - 删除技能按钮"
+description = "删除技能按钮 ${技能按钮} "
+comment = [[只能是来自“创建技能按钮控件”的控件,不能删原生哈。]]
+category = TC_KKAPI
+[[.args]]
+type = frame
+
+[KKCommandButtonClick]
+title = "技能按钮 - 鼠标点击技能按钮"
+description = "点击技能按钮 ${技能按钮} , 按照鼠标 ${鼠标类型} 类型来点击"
+comment = [[鼠标类型1是左键，4是右键，无目标技能左键之后可以释放，目标类技能左键后会激活目标指示器]]
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = integer
+
+[KKCommandTargetClick]
+title = "技能按钮 - 目标指示器点击目标单位"
+description = "鼠标 ${鼠标类型} 类型点击目标 ${单位} "
+comment = [[需要先激活目标指示器后, 鼠标类型1是左键点击目标，4是右键取消]]
+category = TC_KKAPI
+[[.args]]
+type = integer
+[[.args]]
+type = unit
+
+
+[KKCommandTargetItemClick]
+title = "技能按钮 - 目标指示器点击目标物品"
+description = "鼠标 ${鼠标类型} 类型点击目标 ${物品} "
+comment = [[需要先激活目标指示器后, 鼠标类型1是左键点击目标，4是右键取消]]
+category = TC_KKAPI
+script_name = "DzCommandTargetClick"
+[[.args]]
+type = integer
+[[.args]]
+type = item
+
+
+
+[KKCommandTerrainClick]
+title = "技能按钮 - 目标指示器点击地面坐标"
+description = "鼠标 ${鼠标类型} 类型点击坐标 x轴 ${X} , y轴 ${Y} , z轴 ${Z} "
+comment = [[坐标类的技能 需要先激活点或范围指示器后, 鼠标类型1是左键点击目标，4是右键取消]]
+category = TC_KKAPI
+[[.args]]
+type = integer
+[[.args]]
+type = real
+default = 0
+[[.args]]
+type = real
+default = 0
+[[.args]]
+type = real
+default = 0
+
+
+[KKSetCommandUnitAbility]
+title = "技能按钮 - 绑定单位技能"
+description = "技能按钮 ${技能按钮} 绑定单位 ${单位} 的技能 ${技能id} "
+comment = [[需要 先添加单位技能， 然后改按钮y轴-11隐藏, 然后再计时器循环0.1秒绑定, 技能id填0是取消绑定。]]
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+
+
+[DzItemSetSize]
+title = "物品 - 物品大小"
+description = "物品 ${物品} 按照 ${大小} 进行缩放"
+comment = [[]]
+category = TC_KKAPI
+[[.args]]
+type = item
+[[.args]]
+type = real
+
+
+[DzItemMatRotateX]
+title = "物品 - 模型按照X轴旋转"
+description = "物品 ${物品} 按照X轴 ${X} 进行旋转"
+comment = [[多次调用是会乘法累计旋转的, 拾取丢弃物品会重置]]
+category = TC_KKAPI
+[[.args]]
+type = item
+[[.args]]
+type = real
+
+[DzItemMatRotateY]
+title = "物品 - 模型按照Y轴旋转"
+description = "物品 ${物品} 按照Y轴 ${Y} 进行旋转"
+comment = [[多次调用是会乘法累计旋转的, 拾取丢弃物品会重置]]
+category = TC_KKAPI
+[[.args]]
+type = item
+[[.args]]
+type = real
+
+[DzItemMatRotateZ]
+title = "物品 - 模型按照Z轴旋转"
+description = "物品 ${物品} 按照Z轴 ${Z} 进行旋转"
+comment = [[多次调用是会乘法累计旋转的, 拾取丢弃物品会重置]]
+category = TC_KKAPI
+[[.args]]
+type = item
+[[.args]]
+type = real
+
+
+[DzItemMatScale]
+title = "物品 - 模型按照XYZ轴缩放"
+description = "物品 ${物品} 按照X轴 ${X} ,Y轴 ${Y} ,Z轴 ${Z} 进行缩放"
+comment = [[多次调用是会乘法累计缩放的, 拾取丢弃物品会重置]]
+category = TC_KKAPI
+[[.args]]
+type = item
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzItemMatReset]
+title = "物品 - 模型重置旋转缩"
+description = "物品 ${物品} 模型重置旋转缩"
+comment = [[旋转清零,缩放重置为1]]
+category = TC_KKAPI
+[[.args]]
+type = item
+
+
+
+[DzSetPariticle2SizeItem]
+title = "物品 - 模型粒子2的缩放倍数"
+description = "物品 ${物品} 模型粒子2的缩放 ${倍数} 倍数"
+comment = [[每次调用是乘法计算 需要填大于0的数值，填0会直接导致之后的计算失效]]
+category = TC_KKAPI
+script_name = DzSetPariticle2Size
+[[.args]]
+type = item
+[[.args]]
+type = real
+
+
+
+[DzSetPariticle2SizeEffect]
+title = "特效 - 模型粒子2的缩放倍数"
+description = "特效 ${特效} 模型粒子2的缩放 ${倍数} 倍数"
+comment = [[每次调用是乘法计算 需要填大于0的数值，填0会直接导致之后的计算失效]]
+category = TC_KKAPI
+script_name = DzSetPariticle2Size
+[[.args]]
+type = effect
+[[.args]]
+type = real
+
+[DzSetPariticle2SizeUnit]
+title = "单位 - 模型粒子2的缩放倍数"
+description = "单位 ${单位} 模型粒子2的缩放 ${倍数} 倍数"
+comment = [[每次调用是乘法计算 需要填大于0的数值，填0会直接导致之后的计算失效]]
+category = TC_KKAPI
+script_name = DzSetPariticle2Size
+[[.args]]
+type = unit
+[[.args]]
+type = real
+
+
+[DzSetUnitCollisionSize]
+title = "单位 - 修改单位碰撞体积"
+description = "修改单位 ${单位} 的碰撞体积为 ${碰撞体积} "
+comment = [[修改之后移动一下单位或者重新设置一下位置就会刷新了]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+
+
+--[DzSetWidgetTextureUnit]
+--title = "单位 - 替换单位贴图"
+--description = "替换单位 ${单位} 新的贴图 ${贴图} 为指定 TexId ${texId} "
+--comment = "只能替换模型中有Replaceable ID x 贴图的模型，ID为索引。不会替换大头像中的模型"
+--category = TC_KKAPI
+--script_name = DzSetWidgetTexture
+--[[.args]]
+--type = unit
+--[[.args]]
+--type = imagefile
+--[[.args]]
+--type = integer
+
+
+[DzSetWidgetTextureItem]
+title = "物品 - 替换物品贴图"
+description = "替换物品 ${物品} 新的贴图 ${贴图} 为指定 TexId ${texId} "
+comment = "只能替换模型中有Replaceable ID x 贴图的模型，ID为索引。不会替换大头像中的模型"
+category = TC_KKAPI
+script_name = DzSetWidgetTexture
+[[.args]]
+type = item
+[[.args]]
+type = imagefile
+[[.args]]
+type = integer
+
+
+[DzSetWidgetTextureEffect]
+title = "特效 - 替换特效贴图"
+description = "替换特效 ${特效} 新的贴图 ${贴图} 为指定 TexId ${texId} "
+comment = ""
+category = TC_KKAPI
+script_name = DzSetWidgetTexture
+[[.args]]
+type = effect
+[[.args]]
+type = imagefile
+[[.args]]
+type = integer
+
+
+[DzSetUnitSelectScale]
+title = "单位 - 修改单位选择圈缩放"
+description = "修改单位 ${单位} 的选择圈缩放为 ${缩放} "
+comment = [[可以0隐藏或者显示修改指定单位的选择圈大小]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+
+[DzSetUnitHitIgnore]
+title = "单位 - 设置单位是否忽略点击"
+description = "设置单位 ${单位} 的点击球是否忽略 ${忽略} "
+comment = [[true为忽略, false会恢复，删除蝗虫技能后, 隐藏显示单位, 再设置忽略点击false, 关闭打开碰撞 即完美删除蝗虫。]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = boolean
+
+
+
+
+[DzEffectBindEffect]
+title = "特效 - 特效绑定特效"
+description = "给特效 ${特效} 的附加点 ${附加点} 绑定特效 ${特效} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = string
+[[.args]]
+type = effect
+
+
+
+[DzFrameSetIgnoreTrackEvents]
+title = "界面 - 设置Frame控件忽略点击事件"
+description = "设置Frame控件 ${frame} 忽略点击事件为 ${是否} "
+comment = "只能用在Frame类型的控件, 对SimpleFrame类型的控件无效, 忽略后可以鼠标穿透地面, 不忽略则会挡住鼠标点击。"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = boolean
+
+
+
+[DzFrameSetModel2]
+title = "界面 - ui模型 - 设置模型文件"
+description = "设置ui模型控件 ${model_frame} 的文件路径为 ${model_path} , 队伍颜色id为 ${color_id} "
+comment = "只能是ui模型控件, 队伍颜色id是0~15 0为红色"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = modelfile
+[[.args]]
+type = integer
+
+
+[DzFrameRemoveModelEffect]
+title = "界面 - ui模型 - 移除绑定特效"
+description = "为ui模型控件 ${model_frame} 移除绑定的特效 ${effect_frame} "
+comment = "effect_frame只能是ui模型添加绑定特效的返回值"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = frame
+
+
+[DzFrameSetModelAnimationByIndex]
+title = "界面 - ui模型 - 播放动画指定索引"
+description = "ui模型控件 ${model_frame} 播放动画指定索引 ${anim_index} "
+comment = "可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = integer
+
+[DzFrameSetModelAnimation]
+title = "界面 - ui模型 - 播放动画指定动画名"
+description = "ui模型控件 ${model_frame} 播放动画指定动画名 ${animation} "
+comment = "可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = string
+
+[DzFrameSetModelCameraSource]
+title = "界面 - ui模型 - 设置场景内镜头源点"
+description = "ui模型控件 ${model_frame} 设置镜头源点 x轴 ${x轴} ,y轴 ${y轴} ,z轴 ${z轴} "
+comment = "只能是ui模型控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+
+[DzFrameSetModelCameraTarget]
+title = "界面 - ui模型 - 设置场景内镜头目标点"
+description = "ui模型控件 ${model_frame} 设置镜头目标点 x轴 ${x轴} ,y轴 ${y轴} ,z轴 ${z轴} "
+comment = "只能是ui模型控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzFrameSetModelSize]
+title = "界面 - ui模型 - 设置缩放大小"
+description = "ui模型控件 ${model_frame} 设置 缩放 ${size} "
+comment = "设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+[DzFrameSetModelPosition]
+title = "界面 - ui模型 - 设置场景内的坐标(X Y Z)"
+description = "ui模型控件 ${model_frame} 设置 X轴 ${X轴} , Y轴 ${Y轴} , Z轴 ${Z轴} "
+comment = "设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzFrameSetModelX]
+title = "界面 - ui模型 - 设置场景内的坐标X轴"
+description = "ui模型控件 ${model_frame} 设置 X轴 ${X轴} "
+comment = "设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+[DzFrameSetModelY]
+title = "界面 - ui模型 - 设置场景内的坐标Y轴"
+description = "ui模型控件 ${model_frame} 设置 Y轴 ${Y轴} "
+comment = "设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+[DzFrameSetModelZ]
+title = "界面 - ui模型 - 设置场景内的坐标Z轴"
+description = "ui模型控件 ${model_frame} 设置 Z轴 ${Z轴} "
+comment = "设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+
+
+[DzFrameSetModelSpeed]
+title = "界面 - ui模型 - 设置动画播放速度"
+description = "ui模型控件 ${model_frame} 设置 动画播放速度 ${倍率} "
+comment = "设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+
+
+[DzFrameSetModelScale]
+title = "界面 - ui模型 - 设置矩阵缩放"
+description = "ui模型控件 ${model_frame} 设置 矩阵缩放 (X轴 ${x轴} , Y轴 ${y轴} , Z轴 ${z轴})"
+comment = "每次调用累计乘法计算缩放, 设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件 "
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+default = 1.0
+[[.args]]
+type = real
+default = 1.0
+[[.args]]
+type = real
+default = 1.0
+
+[DzFrameSetModelMatReset]
+title = "界面 - ui模型 - 设置矩阵重置"
+description = "ui模型控件 ${model_frame} 设置矩阵重置"
+comment = "缩放重置为1, 旋转清零, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+
+
+[DzFrameSetModelRotateX]
+title = "界面 - ui模型 - 设置矩阵旋转X轴"
+description = "ui模型控件 ${model_frame} 设置矩阵旋转X轴 ${X轴} "
+comment = "每次调用累计乘法计算, 不想累计的重置后再设置, 设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+
+[DzFrameSetModelRotateY]
+title = "界面 - ui模型 - 设置矩阵旋转Y轴"
+description = "ui模型控件 ${model_frame} 设置矩阵旋转Y轴 ${Y轴} "
+comment = "每次调用累计乘法计算, 不想累计的重置后再设置, 设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+[DzFrameSetModelRotateZ]
+title = "界面 - ui模型 - 设置矩阵旋转Z轴"
+description = "ui模型控件 ${model_frame} 设置矩阵旋转Z轴 ${Z轴} "
+comment = "每次调用累计乘法计算, 不想累计的重置后再设置, 设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+
+[DzFrameSetModelColor]
+title = "界面 - ui模型 - 设置模型颜色"
+description = "ui模型控件 ${model_frame} 设置模型颜色 ${color} "
+comment = "包含透明通道, 设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = rgba2color
+default = "DzGetColor"
+
+
+[DzFrameSetModelTexture]
+title = "界面 - ui模型 - 替换模型id贴图"
+description = "ui模型控件 ${model_frame} 设置贴图路径 ${texture_file} , 指定id ${id} "
+comment = "id是指模型里指定的纹理id, 设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = imagefile
+[[.args]]
+type = integer
+
+
+[DzFrameSetModelParticle2Size]
+title = "界面 - ui模型 - 设置粒子2缩放大小"
+description = "ui模型控件 ${model_frame} 设置粒子2缩放大小 ${scale} "
+comment = "必须是有粒子2的模型, 缩放是乘法计算需要大于0, 设置模型后会重置, 可以是ui模型控件、SPRITE、MODEL类型的控件"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+[DzFrameSetNameContext]
+title = "界面 - 设置控件全局名字跟绑定整数"
+description = "设置控件 ${frame} 全局名字 ${name} 绑定整数 ${context} "
+comment = "相当于修改 <<新建Frame [Tag]:DzCreateFrameByTagName>> 函数的第2个参数，跟最后一个参数,全局名字不能重复，否则退出游戏时会崩溃，可以使用修改后的名字跟整数查找控件，支持Frame、SimpleFrame、SimpleTexture、SimpleStringFont"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = string
+[[.args]]
+type = integer
+
+
+[DzFrameSetTextFontSpacing]
+title = "界面 - 设置文本控件字间距"
+description = "设置文本控件 ${frame} 设置字间距 ${spacint} "
+comment = "只能TEXT类型控件使用"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+
+
+[KKCommandSetCooldownModelSize]
+title = "界面 - 设置技能/物品按钮的冷却模型缩放大小"
+description = "设置技能/物品按钮 ${comand_button} 的冷却模型缩放大小 ${size} "
+comment = "只能技能/物品按钮使用, 修改按钮大小后，需要手动缩放一次cd模型的缩放比例"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+
+
+[KKCommandSetCooldownModelSize2]
+title = "界面 - 设置技能/物品按钮的冷却模型缩放指定宽高比例"
+description = "设置技能/物品按钮 ${comand_button} 的冷却模型缩放宽比例 ${width_size} , 高比例 ${height_size} "
+comment = "只能技能/物品按钮使用, 修改按钮大小后，需要手动缩放一次cd模型的缩放比例"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+default = 1
+[[.args]]
+type = real
+default = 1
+
+
+
+[DzSetMaxFps]
+title = "游戏 - 限制最高帧数"
+description = "限制最高帧数 为 ${max_fps} "
+comment = "跟解锁上限不同，只能60之内, 例如30帧用来模拟卡顿的游戏环境"
+category = TC_KKAPI
+[[.args]]
+type = integer
+min = 1
+default = 30
+
+
+
+[DzEnableDrawSkillPanel]
+title = "允许查看指定单位技能"
+description = "允许查看指定单位 ${单位} 的技能, 是否开启 ${enable} "
+comment = "开启后可以看友军或敌军单位的技能"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = boolean
+
+[DzEnableDrawSkillPanelByPlayer]
+title = "允许查看指定玩家单位技能"
+description = "允许查看指定玩家 ${玩家} 的单位技能, 是否开启 ${enable} "
+comment = "开启后可以看友军或敌军单位的技能"
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = boolean
+
+[DzSetEffectFogVisible]
+title = "特效 - 设置特效迷雾可见"
+description = "设置特效 ${特效} 在迷雾里可见 ${enable} "
+comment = "只能对创建到地面的特效使用。迷雾即非视野 非黑色阴影的区域"
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = boolean
+
+
+[DzSetEffectMaskVisible]
+title = "特效 - 设置特效黑色阴影可见"
+description = "设置特效 ${特效} 在黑色阴影里可见 ${enable} "
+comment = "只能对创建到地面的特效使用。 黑色阴影即未解锁的区域"
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = boolean
+
+
+[DzFrameBindWidget]
+title = "世界坐标 - 绑定Frame到单位实时位置"
+description = "绑定Frame ${frame} 到单位 ${unit} 的实时位置, 偏移世界坐标(X ${X} , Y ${Y} , Z ${Z})偏移屏幕坐标(X ${SX} , Y ${SY})战争迷雾可见 ${fog_visible} 有单位视野可见 ${unit_visible} 单位死亡可见 ${dead_visible} "
+comment = "绑定后会清除控件锚点, 每帧设置控件中心坐标为 世界坐标+偏移 转屏幕坐标 +偏移后的位置, 超出屏幕，或者不满足条件的情况下会对控件隐藏, 在删除单位，或者删除控件前解除绑定。"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = unit
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = boolean
+default = 'false'
+[[.args]]
+type = boolean
+default = 'true'
+[[.args]]
+type = boolean
+default = 'false'
+
+
+[KKFrameBindItem]
+title = "世界坐标 - 绑定Frame到物品实时位置"
+description = "绑定Frame ${frame} 到物品 ${item} 的实时位置, 偏移世界坐标(X ${X} , Y ${Y} , Z ${Z})偏移屏幕坐标(X ${SX} , Y ${SY})战争迷雾可见 ${fog_visible} 物品隐藏时一起隐藏 ${item_visible} "
+comment = "绑定后会清除控件锚点, 每帧设置控件中心坐标为 世界坐标+偏移 转屏幕坐标 +偏移后的位置, 超出屏幕，或者不满足条件的情况下会对控件隐藏, 在删除物品，或者删除控件前解除绑定。"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = item
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = boolean
+default = 'false'
+[[.args]]
+type = boolean
+default = 'true'
+
+
+
+
+[DzFrameBindWorldPos]
+title = "世界坐标 - 绑定Frame到世界坐标实时位置"
+description = "绑定Frame ${frame} 世界坐标(X ${X} , Y ${Y} , Z ${Z})偏移屏幕坐标(X ${SX} , Y ${SY})战争迷雾可见 ${fog_visible} "
+comment = "绑定后会清除控件锚点, 每帧设置控件中心坐标为 世界坐标 转屏幕坐标 +偏移后的位置, 超出屏幕，或者不满足条件的情况下会对控件隐藏, 在删除控件前解除绑定。"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = real
+default = '0.0'
+[[.args]]
+type = boolean
+default = 'false'
+
+
+[DzFrameUnBind]
+title = "世界坐标 - 解除Frame的绑定"
+description = "解除Frame ${frame} 的绑定"
+comment = "解除绑定后不会再刷新位置跟改变隐藏显示"
+category = TC_KKAPI
+[[.args]]
+type = frame
+
+[DzDisableUnitPreselectUi]
+title = "界面 - 屏蔽所有单位指向UI跟血条"
+description = "屏蔽所有单位指向UI跟血条"
+comment = "屏蔽会保留选择圈，开局调用一次后即可屏蔽所有单位的，以便重写血条"
+category = TC_KKAPI
+
+[DzDisableItemPreselectUi]
+title = "界面 - 屏蔽所有物品指向UI"
+description = "屏蔽所有物品指向UI"
+comment = "屏蔽会保留选择圈，开局调用一次后即可屏蔽所有物品的，以便写物品地面UI"
+category = TC_KKAPI
+
+[DzFrameSetCheckBoxState]
+title = "界面 - 设置复选框勾选状态"
+description = "设置复选框 ${check_box} 的勾选状态为 ${checked} "
+comment = "只能对CHECKBOX、GLUECHECKBOX 类型使用"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = boolean
+
+[DzFrameSetEditBoxActive]
+title = "界面 - 设置编辑框激活状态"
+description = "设置编辑框 ${editbox} 激活状态 ${active} "
+comment = "true可以主动调用激活焦点的同时激活输入法, false关闭输入法, 只能对EDITBOX、GLUEEDITBOX类型使用"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = boolean
+
+
+[DzFrameSetEditBoxDisableIme]
+title = "界面 - 设置编辑框禁用输入法"
+description = "设置编辑框 ${editbox} 是否禁用输入法 ${disable} "
+comment = "true禁用输入法, 禁用后只能输入英文字母跟数字, 不禁用可以打中文, 只能对EDITBOX、GLUEEDITBOX类型使用"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = boolean
+
+
+[DzWindowSetPoint]
+title = "硬件 - 设置游戏窗口位置"
+description = "设置游戏窗口位置 屏幕X轴 ${X轴} , 屏幕Y轴 ${Y轴} "
+comment = "只有窗口模式才有效，屏幕XY轴是指用户屏幕 0,0 为右上角"
+category = TC_KKAPI
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+
+
+[DzWindowSetSize]
+title = "硬件 - 设置游戏窗口大小"
+description = "设置游戏窗口大小 屏幕宽度 ${width} , 高度 ${height} "
+comment = "只有窗口模式才有效, 改变大小之后 可以通过屏幕大小 设置窗口位置来居中"
+category = TC_KKAPI
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+
+
+
+[DzSetDoodadsMatScale]
+title = "装饰物 - 设置地形装饰物矩阵缩放"
+description = "装饰物 ${doodads} 设置 X轴 ${X轴} , Y轴 ${Y轴} , Z轴 ${Z轴} 缩放"
+comment = "每次调用是乘法计算， 需要填大于0的数值，填0会直接导致之后的计算失效"
+category = TC_KKAPI
+[[.args]]
+type = integer
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+
+[DzSetDoodadsMatRotateX]
+title = "装饰物 - 设置地形装饰物矩阵旋转X轴"
+description = "装饰物 ${doodads} 设置 X轴 ${X轴} 旋转"
+comment = "每次调用是乘法计算"
+category = TC_KKAPI
+[[.args]]
+type = integer
+[[.args]]
+type = real
+
+
+[DzSetDoodadsMatRotateY]
+title = "装饰物 - 设置地形装饰物矩阵旋转Y轴"
+description = "装饰物 ${doodads} 设置 Y轴 ${Y轴} 旋转"
+comment = "每次调用是乘法计算"
+category = TC_KKAPI
+[[.args]]
+type = integer
+[[.args]]
+type = real
+
+[DzSetDoodadsMatRotateZ]
+title = "装饰物 - 设置装饰物矩阵旋转Z轴"
+description = "装饰物 ${doodads} 设置 Z轴 ${Z轴} 旋转"
+comment = "每次调用是乘法计算"
+category = TC_KKAPI
+[[.args]]
+type = integer
+[[.args]]
+type = real
+
+
+[DzSetDoodadsMatReset]
+title = "装饰物 - 设置地形装饰物矩阵重置"
+description = "装饰物 ${doodads} 矩阵重置"
+comment = "将缩放重置为1，将旋转角度重置为0"
+category = TC_KKAPI
+[[.args]]
+type = integer
+
+
+
+[DzSetUnitAbilityArt]
+title = "技能 - 设置技能图标"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的图标为 ${art_path} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = imagefile
+
+
+[DzSetUnitAbilityTip]
+title = "技能 - 设置技能提示"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的提示为 ${tip} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = string
+
+
+[DzSetUnitAbilityUberTip]
+title = "技能 - 设置技能提示扩展"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的提示扩展为 ${ubertip} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = string
+
+
+
+[DzSetUnitAbilityUpdate]
+title = "技能 - 设置刷新数据"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 数据刷新"
+comment = [[不能异步调用。用来替代升级降级的刷新数据用的, 1级技能也能用。]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+
+
+[DzSetUnitAbilityOrderId]
+title = "技能 - 设置技能命令ID"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的命令ID ${order_id} "
+comment = [[可以动态修改大部分技能的命令ID，让同类型技能不冲突。单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = integer
+
+
+[DzSetUnitAbilitySpellBookList]
+title = "技能 - 设置魔法书的技能列表"
+description = "设置单位 ${unit} 当前拥有的魔法书技能 ${id} 的技能列表 ${list} 是否保留cd ${save_cool} "
+comment = [[保留cd的话， 同ID技能在修改列表后才能保持cd， 列表超过12个无效, 单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = string
+[[.args]]
+type = boolean
+default = "false"
+
+[DzSetUnitAbilityMissileArt]
+title = "技能 - 设置技能投射物模型"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的投射物模型 ${missile_art} "
+comment = [[单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = modelfile
+
+[DzSetUnitAbilityMissileSpeed]
+title = "技能 - 设置技能投射物速度"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的投射物速度 ${missile_speed} "
+comment = [[弹道飞行速度。单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityMissileArc]
+title = "技能 - 设置技能投射物弧度"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的投射物弧度 ${missile_arc} "
+comment = [[抛物线的弧度。单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityMissileHoming]
+title = "技能 - 设置技能投射物允许自导"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的投射物允许自导 ${missile_homing} "
+comment = [[true相当于发射投射物后，目标单位移动了会持续追踪的意思, false则不追踪会砸到地面。单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = boolean
+
+
+[DzSetUnitAbilityMissileCount]
+title = "技能 - 设置技能投射物数量 (弹幕攻击)"
+description = "设置单位 ${unit} 当前拥有的弹幕攻击技能 ${id} 的投射物数量 ${missile_count} "
+comment = [[只对Aroc弹幕攻击技能生效, 修改DataC也能改变数量，但此函数数量更精准。 单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = integer
+
+
+
+[DzSetUnitAbilityMissileDamage]
+title = "技能 - 设置技能投射物伤害 (弹幕攻击)"
+description = "设置单位 ${unit} 当前拥有的弹幕攻击技能 ${id} 的投射物单目标伤害 ${damage} 多目标伤害限制 ${max_damage} 攻击类型 ${attacktype} 伤害类型 ${damagetype} "
+comment = [[只对Aroc弹幕攻击技能生效, damage等同修正原物编DataA无效项, max_damage等同修改原物编DataB。该伤害对主目标无效，只对弹幕分裂目标有效。单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = attacktype
+default = "AttackTypeHero"
+[[.args]]
+type = damagetype
+default = "DamageTypeNormal"
+
+
+
+
+[DzSendKeyboard]
+title = "游戏 - 模拟按键 (窗口消息)"
+description = "让玩家 ${player} 发送窗口消息 模拟键盘 ${key_code} 进行 ${is_down} 的消息"
+comment = [[会触发响应同步事件, 发送模拟按键窗口消息给魔兽, 相当于SendMessage, 点击记得释放, 不然可能会键盘按键会在下一次失效, 聊天框显示时不执行]]
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = gamekey
+default = "GameKey_A"
+[[.args]]
+type = gamekeyaction
+default = "GameKeyAction_Press"
+
+
+[DzForceUiKeyboard]
+title = "游戏 - 模拟按键 (游戏UI消息)"
+description = "让玩家 ${player} 发送游戏UI消息 模拟键盘 ${key_code} 进行 ${is_down} 的消息"
+comment = [[发送UI按键消息给魔兽GameUI, 不会触发响应同步事件, 相当于自带ForceUiKey函数支持更多按键的版本, 某些特殊键无效。]]
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = gamekey
+default = "GameKey_A"
+[[.args]]
+type = gamekeyaction
+default = "GameKeyAction_Press"
+
+
+[DzDisableWindowKeyboard]
+title = "游戏 - 屏蔽按键 (窗口消息)"
+description = "让玩家 ${player} 屏蔽窗口键盘 ${key_code} 的消息"
+comment = [[会屏蔽硬件同步事件, 聊天框显示时不屏蔽]]
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = gamekey
+default = "GameKey_A"
+
+[DzDisableGameUIKeyboard]
+title = "游戏 - 屏蔽按键 (游戏UI消息)"
+description = "让玩家 ${player} 屏蔽游戏UI按键 ${key_code} 的消息"
+comment = [[在屏蔽游戏UI的按键消息, 某些特殊键无效。 dz的硬件同步事件依旧会执行]]
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = gamekey
+default = "GameKey_A"
+
+
+[DzFrameSetModelEnableWideScreen]
+title = "界面 - ui模型 - 设置宽屏补丁"
+description = "设置ui模型控件 ${model_frame} 强制开启或关闭 ${is_enable} 宽屏补丁"
+comment = "只能是ui模型控件, true时强制指定ui模型开启宽屏补丁, false时强制指定ui模型关闭宽屏补丁。"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = boolean
+
+
+
+[DzSetUnitAbilityEnable]
+title = "技能 - 设置技能启用"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的启用状态 "
+comment = [[内部有累计次数， 只有次数为小于等于0的时候才会真的启用。 单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+
+
+[DzSetUnitAbilityDisable]
+title = "技能 - 设置技能禁用"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 禁用状态"
+comment = [[内部有累计次数， 只有次数大于0的时候才会真的禁用。 单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+
+
+[DzSetUnitAbilityTechReach]
+title = "技能 - 设置技能科技条件达成"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的科技条件是否 ${reach} 达成"
+comment = [[支持大部分技能、魔法书内技能、收费技能等。单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = boolean
+
+
+[DzSetUnitAbilityTechReachTip]
+title = "技能 - 设置技能科技条件文本"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的科技条件的文本为 ${tip}"
+comment = [[只有当科技未达成时才会显示,支持大部分技能、魔法书内技能、收费技能等。单位的独立修改,不会影响其他单位身上的技能;删除技能后改动即清除, 如无效果刷新技能数据即可]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = string
+
+[DzFrameUnlockMouseRectLimit]
+title = "界面 - 解锁右下角区域鼠标焦点限制"
+description = "解锁右下角区域鼠标焦点限制 是否解锁 ${is_unlock} "
+comment = [[解锁后右下角技能栏附近的Frame进入离开事件跟焦点可以生效。开局调用一次即可]]
+category = TC_KKAPI
+[[.args]]
+type = boolean
+
+[DzPlayerSendChat]
+title = "玩家 - 发送聊天消息(触发同步事件)"
+description = "玩家 ${player} 发送聊天消息 ${message} 使用聊天频道 ${recipient} "
+comment = [[player在异步事件里可以使用本地玩家, 在同步事件里可以指定玩家, 该函数会进行网络同步, 同步后会响应所有触发器聊天事件, 由于有同步请不要高频率执行。]]
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = string
+[[.args]]
+type = ChatRecipient
+default ='DzGetLocalChatRecipient'
+
+
+
+[DzEnableHashtableSetNull]
+title = "哈希表 - 开启保存空值(逆天设置null)"
+description = "哈希表是否 ${是否开启} 开启保存空值(逆天设置null)"
+comment = [[开局调用,开启之后 哈希表、逆天局部变量、逆天自定义值 都可以设置null值。 true开启 false关闭]]
+category = TC_KKAPI
+[[.args]]
+type = boolean
+
+
+[DzSetItemCollisionSize]
+title = "物品 - 修改物品碰撞体积"
+description = "修改物品 ${物品} 的碰撞体积为 ${碰撞体积} "
+comment = [[体积可以是0,8,16,32,64。修改之后重新设置一下位置就会刷新了]]
+category = TC_KKAPI
+[[.args]]
+type = item
+[[.args]]
+type = real
+
+
+[DzSetUnitDisableLocalOrder]
+title = "单位 - 设置单位屏蔽本地命令(模拟失控)"
+description = "设置单位 ${单位} 屏蔽本地命令为 ${屏蔽状态} "
+comment = [[true是失控状态, false是恢复。 屏蔽之后该单位任何手动控制都将失效, 只能通过触发器命令控制该单位。 屏蔽本地命令的缺点是 多选单位会因为其中一个屏蔽而所有选择单位]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = boolean
+
+
+[DzSetUnitDisableControlOrder]
+title = "单位 - 设置单位屏蔽控制命令(模拟失控)"
+description = "设置单位 ${单位} 屏蔽控制命令为 ${屏蔽状态} "
+comment = [[true是失控状态, false是恢复。 屏蔽之后该单位任何手动控制都将失效, 只能通过触发器命令控制该单位。]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = boolean
+
+
+[DzSetUnitAttack1TargetType]
+title = "单位 - 设置单位攻击1目标允许"
+description = "设置单位 ${单位} 攻击1目标类型 ${目标允许} "
+comment = [[可使用“转化 - 目标允许字符串转整数”, 例如 允许地面单位攻击飞行单位]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = integer
+
+[DzSetUnitAttack2TargetType]
+title = "单位 - 设置单位攻击2目标允许"
+description = "设置单位 ${单位} 攻击2目标类型 ${目标允许} "
+comment = [[可使用“转化 - 目标允许字符串转整数”, 例如 设置允许地面单位攻击空中单位]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = integer
+
+
+[DzSetUnitAsAttackTargetType]
+title = "单位 - 设置单位作为目标类型"
+description = "设置单位 ${单位} 作为目标类型 ${目标允许} "
+comment = [[使用“转化 - 目标允许字符串转整数”, 例如 设置自身是否作为空中目标, 近战不能打空中]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = integer
+
+
+[DzFrameBindAddHideRect]
+title = "世界坐标 - 为绑定的Frame添加隐藏区域"
+description = "为绑定的Frame ${frame} 添加隐藏区域( ${左0~0.8}, ${下0~0.6}, ${右0~0.8}, ${上0~0.6} ) 控件大小( ${宽度}, ${高度} )"
+comment = "需要先绑定Frame到世界坐标或者物品单位实时坐标后, 再使用该函数。可以在控件进入区域时隐藏控件。屏幕区域左右0~0.8, 上下0~0.6"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+min = 0.0
+max = 0.8
+
+[[.args]]
+type = real
+min = 0.0
+max = 0.6
+
+[[.args]]
+type = real
+min = 0.0
+max = 0.8
+
+[[.args]]
+type = real
+min = 0.0
+max = 0.6
+
+[[.args]]
+type = real
+min = 0.0
+max = 0.8
+
+[[.args]]
+type = real
+min = 0.0
+max = 0.6
+
+
+
+[DzSetUnitAbilitySpellBookAddAbility]
+title = "技能 - 设置魔法书技能列表添加新技能"
+description = "设置单位 ${unit} 当前拥有的魔法书技能 ${id} 的技能列表 添加新技能 ${abil_id} "
+comment = [[添加新技能, 不能跟原有的重复，不能超过12个技能。 ]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = abilcode
+
+
+[DzSetUnitAbilitySpellBookRemoveAbility]
+title = "技能 - 设置魔法书技能列表移除指定技能"
+description = "设置单位 ${unit} 当前拥有的魔法书技能 ${id} 的技能列表 移除指定技能 ${abil_id} "
+comment = [[将指定技能从魔法书里剔除。]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = abilcode
+
+[DzFixUnitEventMemoryLeak]
+title = "游戏 - 修复单位命令事件泄漏"
+description = "修复单位命令事件泄漏"
+comment = [[开局调用一次即可，修复注册单位无目标命令事件后 每次发布无目标命令都会产生的内存泄漏。]]
+category = TC_KKAPI
+
+
+
+
+[DzLaunchMissile]
+title = "投射物 - 发射箭矢"
+description = "发射箭矢 伤害来源: ${source} 目标: ${target} 模型: ${model} 队伍颜色: ${i} 颜色: ${color} 创建坐标: ${x} ${y} ${z} 缩放: ${scale} 速度: ${speed} 攻击类型: ${at} 伤害类型: ${dt} 武器类型: ${wt} 伤害: ${damage} 孤度: ${arc} 自导: ${homing} 可以丢失: ${can_miss} 永不丢失: ${never_miss} 攻击: ${attack} flag: ${flag}"
+comment = "只封装了单位目标, flag 256(0x100) = 单位所受伤害是攻击伤害, 攻击 = 单位所受伤害是物理伤害"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = modelfile
+[[.args]]
+type = integer
+min = 0
+max = 15
+default = "0"
+[[.args]]
+type = rgba2color
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchX"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchY"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchZ"
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+[[.args]]
+type = attacktype
+[[.args]]
+type = damagetype
+[[.args]]
+type = weapontype
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = boolean
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = integer
+default = "256"
+
+
+[DzLaunchMissileBounce]
+title = "投射物 - 发射箭矢(弹射)"
+description = "发射箭矢(弹射) 伤害来源: ${source} 目标: ${target} 模型: ${model} 队伍颜色: ${i} 颜色: ${color} 创建坐标: ${x} ${y} ${z} 缩放: ${scale} 速度: ${speed} 攻击类型: ${at} 伤害类型: ${dt} 武器类型: ${wt} 伤害: ${damage} 孤度: ${arc} 自导: ${homing} 可以丢失: ${can_miss} 永不丢失: ${never_miss} 攻击: ${attack} flag: ${flag} 目标允许: ${target_flag} 最大目标数: ${target_count} 弹射距离: ${range} 伤害衰减: ${damage_loss}"
+comment = "只封装了单位目标, flag 256(0x100) = 单位所受伤害是攻击伤害, 攻击 = 单位所受伤害是物理伤害"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = modelfile
+[[.args]]
+type = integer
+min = 0
+max = 15
+default = "15"
+[[.args]]
+type = rgba2color
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchX"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchY"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchZ"
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+[[.args]]
+type = attacktype
+[[.args]]
+type = damagetype
+[[.args]]
+type = weapontype
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = boolean
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = integer
+default = "256"
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = integer
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+
+[DzLaunchMissileLine]
+title = "投射物 - 发射箭矢(穿透)"
+description = "发射箭矢(穿透) 伤害来源: ${source} 目标: ${target} 模型: ${model} 队伍颜色: ${i} 颜色: ${color} 创建坐标: ${x} ${y} ${z} 缩放: ${scale} 速度: ${speed} 攻击类型: ${at} 伤害类型: ${dt} 武器类型: ${wt} 伤害: ${damage} 孤度: ${arc} 自导: ${homing} 可以丢失: ${can_miss} 永不丢失: ${never_miss} 攻击: ${attack} flag: ${flag} 目标允许: ${target_flag} 伤害衰减: ${damage_loss} 距离: ${distance} 范围: ${range}"
+comment = "只封装了单位目标, flag 256(0x100) = 单位所受伤害是攻击伤害, 攻击 = 单位所受伤害是物理伤害"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = modelfile
+[[.args]]
+type = integer
+min = 0
+max = 15
+default = "15"
+[[.args]]
+type = rgba2color
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchX"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchY"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchZ"
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+[[.args]]
+type = attacktype
+[[.args]]
+type = damagetype
+[[.args]]
+type = weapontype
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = boolean
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = integer
+default = "256"
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+
+
+[DzLaunchMissileSplash]
+title = "投射物 - 发射箭矢(溅射)"
+description = "发射箭矢(溅射) 伤害来源: ${source} 目标: ${target} 模型: ${model} 队伍颜色: ${i} 颜色: ${color} 创建坐标: ${x} ${y} ${z} 缩放: ${scale} 速度: ${speed} 攻击类型: ${at} 伤害类型: ${dt} 武器类型: ${wt} 伤害: ${damage} 孤度: ${arc} 自导: ${homing} 可以丢失: ${can_miss} 永不丢失: ${never_miss} 攻击: ${attack} flag: ${flag} 目标允许: ${targetflags} 中伤害参数: ${half_factor} 小伤害参数: ${quar_factor} 全伤害范围: ${full_area} 半伤害范围: ${half_area} 小伤害范围: ${quar_area}"
+comment = "只封装了单位目标, flag 256(0x100) = 单位所受伤害是攻击伤害, 攻击 = 单位所受伤害是物理伤害"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = modelfile
+[[.args]]
+type = integer
+min = 0
+max = 15
+default = "15"
+[[.args]]
+type = rgba2color
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchX"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchY"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchZ"
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+[[.args]]
+type = attacktype
+[[.args]]
+type = damagetype
+[[.args]]
+type = weapontype
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = boolean
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = integer
+default = "256"
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+
+[DzLaunchArtillery]
+title = "投射物 - 发射炮火"
+description = "发射炮火 伤害来源: ${source} 目标: ${target} 目标坐标: ${target_x} ${target_y} 模型: ${model} 队伍颜色: ${i} 颜色: ${color} 创建坐标: ${x} ${y} ${z} 缩放: ${scale} 速度: ${speed} 攻击类型: ${at} 伤害类型: ${dt} 武器类型: ${wt} 伤害: ${damage} 孤度: ${arc} 攻击: ${attack} flag: ${flag} 最小范围: ${min_distance} 目标允许: ${targetflags} 中伤害参数: ${half_factor} 小伤害参数: ${quar_factor} 全伤害范围: ${full_area} 半伤害范围: ${half_area} 小伤害范围: ${quar_area}"
+comment = "只封装了单位目标, 目标 null 则类似于攻击地面, flag 256(0x100) = 单位所受伤害是攻击伤害, 攻击 = 单位所受伤害是物理伤害"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = modelfile
+[[.args]]
+type = integer
+min = 0
+max = 15
+default = "15"
+[[.args]]
+type = rgba2color
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchX"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchY"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchZ"
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+[[.args]]
+type = attacktype
+[[.args]]
+type = damagetype
+[[.args]]
+type = weapontype
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = boolean
+[[.args]]
+type = integer
+default = "256"
+[[.args]]
+type = real
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzLaunchArtilleryLine]
+title = "投射物 - 发射炮火(穿透)"
+description = "发射炮火(穿透) 伤害来源: ${source} 目标: ${target} 目标坐标: ${target_x} ${target_y} 模型: ${model} 队伍颜色: ${i} 颜色: ${color} 创建坐标: ${x} ${y} ${z} 缩放: ${scale} 速度: ${speed} 攻击类型: ${at} 伤害类型: ${dt} 武器类型: ${wt} 伤害: ${damage} 孤度: ${arc} 攻击: ${attack} flag: ${flag} 最小范围: ${min_distance} 目标允许: ${targetflags} 中伤害参数: ${half_factor} 小伤害参数: ${quar_factor} 全伤害范围: ${full_area} 半伤害范围: ${half_area} 小伤害范围: ${quar_area} 伤害衰减: ${damage_loss} 距离: ${distance} 范围: ${range}"
+comment = "只封装了单位目标, 目标 null 则类似于攻击地面, flag 256(0x100) = 单位所受伤害是攻击伤害, 攻击 = 单位所受伤害是物理伤害"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = modelfile
+[[.args]]
+type = integer
+min = 0
+max = 15
+default = "15"
+[[.args]]
+type = rgba2color
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchX"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchY"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchZ"
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+[[.args]]
+type = attacktype
+[[.args]]
+type = damagetype
+[[.args]]
+type = weapontype
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = boolean
+[[.args]]
+type = integer
+default = "256"
+[[.args]]
+type = real
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzLaunchMissileCarrionSwarmEx]
+title = "投射物 - 发射技能投射物(腐臭蜂群)"
+description = "发射技能投射物(腐臭蜂群) 伤害来源: ${source} 模型: ${model} 队伍颜色: ${i} 颜色: ${color} 创建坐标: ${x} ${y} ${z} 角度: ${degree} 距离: ${distance} 缩放: ${scale} 速度: ${speed} 攻击类型: ${at} 伤害类型: ${dt} 武器类型: ${wt} 伤害: ${damage} flag: ${flag} 目标允许: ${targetflags} 初始范围: ${start_radius} 最终范围: ${start_radius} 最大伤害: ${max_damage} 魔法效果: ${buffID}"
+comment = "只封装了单位目标, 魔法效果用途未知, flag 256(0x100) = 单位所受伤害是攻击伤害"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = modelfile
+[[.args]]
+type = integer
+min = 0
+max = 15
+default = "15"
+[[.args]]
+type = rgba2color
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchX"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchY"
+[[.args]]
+type = real
+default = "DzGetUnitPojectileLaunchZ"
+[[.args]]
+type = degree
+[[.args]]
+type = real
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+[[.args]]
+type = attacktype
+[[.args]]
+type = damagetype
+[[.args]]
+type = weapontype
+[[.args]]
+type = real
+[[.args]]
+type = integer
+default = "256"
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = buffcode
+
+
+
+[DzKillUnit]
+title = "单位 - 杀死(指定凶手)"
+description = "杀死 ${单位} 凶手为 ${killer}"
+comment = "杀死单位时指定凶手"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+
+
+[DzSetUnitXY]
+title = "单位 - 设置XY坐标(不打断命令)"
+description = "设置单位 ${unit} 的坐标为 X: ${x} Y: ${y}"
+comment = "相当于同时 设置单位X轴+设置单位Y轴, 并且不会触发错误的进入区域事件, 不会发布stop命令, 性能比设置单位位置高7倍。"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityEngineeringUpgrade]
+title = "技能 - 工程升级 - 替换技能(要相同模板)"
+description = "工程升级替换技能 单位 ${u} 原有技能 ${old_id} 到目标技能 ${new_id} 更新英雄技能 ${flag}"
+comment = "相当于替换技能, 将指定技能替换成目标技能, 只能替换相同模板的类型, 不同模板替换会错误，谨慎使用。"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = abilcode
+[[.args]]
+type = boolean
+default = "false"
+
+
+[DzSetUnitAbilityEngineeringUpgradeCancel]
+title = "技能 - 工程升级 - 取消替换技能"
+description = "工程升级取消替换技能 单位 ${u} 原有技能 ${old_id} "
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+
+
+
+[DzSetUnitAbilityCastTime]
+title = "技能 - 设置技能魔法施法时间"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的魔法施法时间 ${cast_time} "
+comment = [[开始施法前的准备时间.暗影突袭的此项为伤害间隔.暴风雪和火焰雨的此项为每波间隔;单位的独立修改,删除技能后改动即清除, 需要刷新数据]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityDuration]
+title = "技能 - 设置技能持续时间(普通)"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的持续时间(普通) ${cast_time} "
+comment = [[普通持续时间;单位的独立修改,删除技能后改动即清除, 需要刷新数据;烈焰风暴的此项为燃烧持续时间.变身(恶魔猎手)的此项为完成变身前暂停时间]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+[DzSetUnitAbilityHeroDuration]
+title = "技能 - 设置技能持续时间(英雄)"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的持续时间(英雄) ${cast_time} "
+comment = [[英雄持续时间;单位的独立修改,删除技能后改动即清除, 需要刷新数据;技能对英雄或具有抗性皮肤的单位的持续时间.烈焰风暴的此项为熄灭持续时间.静止陷阱的此项是眩晕时间]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+
+[DzSetUnitAbilityCastPoint]
+title = "技能 - 设置技能魔法施放点(前摇)"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的魔法施放点(前摇) ${cast_time} "
+comment = [[即施法前摇]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+
+[DzSetUnitAbilityBackSwing]
+title = "技能 - 设置技能魔法施放回复(后摇)"
+description = "设置单位 ${unit} 当前拥有的技能 ${id} 的魔法施放回复(后摇) ${cast_time} "
+comment = [[即施法后摇]]
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = abilcode
+[[.args]]
+type = real
+
+
+
+[DzSetUnitLifeRegen]
+title = "单位 - 设置每秒生命恢复"
+description = "设置 ${单位} 的每秒生命恢复为 ${value}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+
+[DzSetUnitManaRegen]
+title = "单位 - 设置每秒魔法恢复"
+description = "设置 ${单位} 的每秒魔法恢复为 ${value}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+
+[DzSetUnitMinSpeed]
+title = "单位 - 设置最低移动速度"
+description = "设置 ${单位} 的最低移动速度为 ${value} 忽略变形术 ${flag}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+[[.args]]
+type = boolean
+default = "false"
+
+[DzSetUnitMaxSpeed]
+title = "单位 - 设置最高移动速度"
+description = "设置 ${单位} 的最高移动速度为 ${value} 忽略变形术 ${flag}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+[[.args]]
+type = boolean
+default = "false"
+
+[DzSetUnitCastPoint]
+title = "单位 - 设置魔法施放点(前摇)"
+description = "设置 ${单位} 的魔法施放点(前摇)为 ${value}"
+comment = "不会影响已经初始化的技能, 修改之后添加的所有技能会使用该前摇"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+
+[DzSetUnitBackSwing]
+title = "单位 - 设置魔法施放回复(后摇)"
+description = "设置 ${单位} 的魔法施放回复(后摇)为 ${value}"
+comment = "不会影响已经初始化的技能, 修改之后添加的所有技能会使用该后摇"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = real
+
+[DzSetUnitAttackTargetCount]
+title = "单位 - 设置攻击最大目标数"
+description = "设置单位 ${unit} 的攻击 ${index} 最大目标数为 ${value}"
+comment = "仅 箭矢(弹射) 攻击类型有效, 并且物编需要填全伤害范围。 第二个参数index 为0的时候 代表攻击1   1的时候代表攻击2"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+
+
+[DzSetHeroPrimaryAttributeType]
+title = "英雄 - 设置主属性类型"
+description = "设置英雄 ${hero} 的主属性类型为 ${attribute} 保留当前主属性加成 ${flag}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = AttributeType
+[[.args]]
+type = boolean
+default = "false"
+
+[DzSetHeroPrimaryAttribute]
+title = "英雄 - 设置主属性"
+description = "设置英雄 ${hero} 的主属性为 ${value}"
+comment = "白字属性"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = integer
+
+[DzSetHeroPrimaryAttributePlus]
+title = "英雄 - 设置属性成长"
+description = "设置英雄 ${hero} 的 ${attribute} 属性成长为 ${value} 保留当前数值: ${flag}"
+comment = "因内部是混用整数和实数 所以保留数值为 TRUE 时会可能丢失/获取额外属性"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = AttributeType
+[[.args]]
+type = real
+[[.args]]
+type = boolean
+default = "false"
+
+
+[DzDisableAttackSpeedLimit]
+title = "游戏 - 禁用攻速限制"
+description = "禁用攻速限制"
+comment = "极限可以大概每秒 9360, 但是你确定电脑撑得住?"
+category = TC_KKAPI
+
+
+[DzSetMinMaxAttackSpeedFactor]
+title = "游戏 - 设置攻速上限"
+description = "设置攻速上限为 ${min} - ${max}"
+comment = "除非禁用攻速限制, 不然最终攻速无法超过每秒 50 次"
+category = TC_KKAPI
+[[.args]]
+type = real
+default = "0.2"
+[[.args]]
+type = real
+default = "5.0"
+
+[DzSetMoveSpeedBonusesStack]
+title = "游戏 - 设置移速可叠加"
+description = "设置移速可叠加 ${flag}"
+comment = "多个技能，多个物品的移动速度能叠加。平衡性常数那个有bug"
+category = TC_KKAPI
+[[.args]]
+type = boolean
+default = "false"
+
+
+[DzSetGlobalUnitMinMaxMoveSpeed]
+title = "游戏 - 设置全局移速 上/下 限"
+description = "设置全局移速 硬编码限制(建筑 ${building_min}-${building_max} 单位 ${unit_min}-${unit_max}) 平衡性常数限制(建筑 ${GC_building_min}-${GC_building_max} 单位 ${GC_unit_min}-${GC_unit_max}) 采矿最低移速 ${harvest_min} 疾步风最高移速 ${windwalk_max}"
+comment = "副作用: 会影响转身速度"
+category = TC_KKAPI
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "522"
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "522"
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "522"
+[[.args]]
+type = real
+default = "0"
+[[.args]]
+type = real
+default = "522"
+[[.args]]
+type = real
+default = "100"
+[[.args]]
+type = real
+default = "522"
+
+
+[DzGroupEnumPlayerControlGroup]
+title = "单位组 - 添加编队单位到单位组"
+description = "为单位组 ${group} 添加玩家 ${player} 的第 ${n} 编队单位 清空单位组: ${clear}"
+comment = "获取指定玩家0~9的编队单位，传没有玩家 来获取本地玩家的异步编队单位"
+category = TC_KKAPI
+[[.args]]
+type = group
+[[.args]]
+type = player
+[[.args]]
+type = integer
+min = 0
+max = 9
+[[.args]]
+type = boolean
+
+[DzTriggerClearEvents]
+title = "触发器 - 清除所有事件"
+description = "清除触发器 ${触发器} 的所有事件"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = trigger
+
+[DzUnitAddItemToSlot]
+title = "单位 - 添加物品到指定格子"
+description = "为单位 ${unit} 添加物品 ${item} 到格子 ${index}"
+comment = "索引从 0 开始"
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = item
+[[.args]]
+type = integer
+
+[DzUnitDamageTarget]
+title = "单位 - 造成伤害(指定凶手)"
+description = "使单位 ${unit} 对 ${widget} 造成 ${damage} 点伤害 武器类型: ${wt} 攻击类型: ${at} 伤害类型: ${dt} flag: ${flag} 是攻击: ${is_attack} 凶手: ${killer} 附加数据: ${data}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = real
+[[.args]]
+type = weapontype
+[[.args]]
+type = attacktype
+[[.args]]
+type = damagetype
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = integer
+default = "0"
+[DzSaveHandleId]
+title = "哈希表 - 保存Handle ID"
+description = "保存Handle ID到哈希表 ${哈希表} 主Key ${主Key} 子Key ${子Key} Handle ID ${HandleId}"
+comment = "保存Handle ID到哈希表中,不改变引用计数, 保存后可以读取指定类型的哈希表实现I2任意类型"
+category = TC_KKAPI
+[[.args]]
+type = hashtable
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+
+[DzSaveHandleIdEx]
+title = "哈希表 - 保存Handle ID(指定类型)"
+description = "保存Handle ID到哈希表 ${哈希表} 主Key ${主Key} 子Key ${子Key} Handle ID ${HandleId} 类型 ${类型}"
+comment = "类型: 1=引用计数类型 2=texttag 3=lightning 4=image 5=ubersplat 6=fogstate"
+category = TC_KKAPI
+[[.args]]
+type = hashtable
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+default = "6"
+
+[DzSetHashtableLimit]
+title = "哈希表 - 设置数量上限"
+description = "设置哈希表数量上限为 ${上限}"
+comment = "默认上限为256个"
+category = TC_KKAPI
+[[.args]]
+type = integer
+default = "256"
+
+[DzDisableRemoveExtraDeadHero]
+title = "游戏 - 禁用移除多余死亡英雄"
+description = "禁用移除多余死亡英雄"
+comment = "调用后不再自动移除多余的死亡英雄, 还需将英雄的占用人口设置为0 或者提高人口上限"
+category = TC_KKAPI
+
+[DzSetPlayerPathFindingLimit]
+title = "游戏 - 设置玩家寻路上限"
+description = "设置 ${玩家} 的寻路上限 深度 ${limit1} 动态 ${limit2} 快速 ${limit3} 本地 ${limit4}"
+comment = "默认值: 深度=800 动态=300 快速=900 本地=1100, 参数全填9999 牺牲性能 换取群体单位移动时不卡寻路。"
+category = TC_KKAPI
+[[.args]]
+type = player
+[[.args]]
+type = integer
+default = "800"
+[[.args]]
+type = integer
+default = "300"
+[[.args]]
+type = integer
+default = "900"
+[[.args]]
+type = integer
+default = "1100"
+
+[DzSetGameConstantFoodCeiling]
+title = "游戏 - 设置人口上限常量"
+description = "设置人口上限常量为 ${值}"
+comment = "修改游戏的人口上限常量, 默认限制为200"
+category = TC_KKAPI
+[[.args]]
+type = integer
+default = "100"
+
+[DzDisableLoadingPressAKey]
+title = "游戏 - 禁用加载完毕按键继续"
+description = "禁用加载完毕按键继续"
+comment = "修改过载入图的地图每次进游戏都需要确认, 调用后加载完毕不再需要按键继续,"
+category = TC_KKAPI
+
+[DzFrameAddTextShadow]
+title = "界面 - 添加文字阴影"
+description = "为 ${Frame} 添加文字阴影 偏移X ${X} 偏移Y ${Y} 颜色 ${颜色}"
+comment = "支持CTextFrame, CMessageFrame, CSimpleFontString, CSimpleMessageFrame"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = real
+default = "0.001"
+[[.args]]
+type = real
+default = "-0.001"
+[[.args]]
+type = integer
+default = "0xFF000000"
+
+[DzFrameDuplicateTextShadow]
+title = "界面 - 复制文字阴影(模拟描边)"
+description = "为 ${Frame} 复制 ${数量} 份阴影"
+comment = "先添加文字阴影，再调用此函数。在原有阴影基础上复制额外的阴影,均匀分布在圆周上"
+category = TC_KKAPI
+[[.args]]
+type = frame
+[[.args]]
+type = integer
+default = "3"
+
+[DzSetCommandButtonShowCooldown]
+title = "技能按钮 - 显示冷却时间文本"
+description = "技能按钮显示冷却时间文本 ${显示技能冷却} 物品按钮显示冷却时间文本 ${显示物品冷却}"
+comment = "在命令按钮上显示剩余冷却时间文本"
+category = TC_KKAPI
+[[.args]]
+type = boolean
+default = "true"
+[[.args]]
+type = boolean
+default = "true"
+
+[DzSetCommandButtonShowHotkey]
+title = "技能按钮 - 显示快捷键文本"
+description = "技能按钮显示快捷键文本 ${显示技能快捷键} 物品按钮显示快捷键文本 ${显示物品快捷键}"
+comment = "在命令按钮上显示快捷键文本"
+category = TC_KKAPI
+[[.args]]
+type = boolean
+default = "true"
+[[.args]]
+type = boolean
+default = "true"
+
+[DzSetCommandButtonHotkeyBackground]
+title = "技能按钮 - 设置快捷键文本背景"
+description = "设置命令按钮快捷键文本背景为 ${路径}"
+comment = "设置快捷键文本的背景纹理路径"
+category = TC_KKAPI
+[[.args]]
+type = imagefile
+default = [[replaceabletextures\teamcolor\teamcolor15.blp]]
+
+
+[DzEffectGroupCreateBJAction]
+title = "特效组 - 创建空的特效组"
+description = "创建空的特效组"
+comment = "会创建特效组,需要排泄,可以用最后创建的特效组"
+category = TC_KKAPI
+script_name = DzEffectGroupCreateBJ
+
+
+[DzEffectGroupAddBJ]
+title = "特效组 - 添加"
+description = "添加 ${特效} 到 ${特效组} 允许重复 ${flag}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = dzeffectgroup
+[[.args]]
+type = boolean
+default = "false"
+
+[DzEffectGroupRemove]
+title = "特效组 - 移出"
+description = "从 ${特效组} 移出 ${特效} (只移出第一个 ${flag})"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = dzeffectgroup
+[[.args]]
+type = effect
+[[.args]]
+type = boolean
+default = "false"
+
+[DzEffectGroupEnumRangeBJ]
+title = "特效组 - 添加范围内的特效"
+description = "选取 X:${x} Y:${y} 范围:${range} 内的特效添加到 ${特效组} (清空${clear} 允许重复${duplicate})"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = dzeffectgroup
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = boolean
+default = "false"
+
+[DzEffectGroupEnumRectBJ]
+title = "特效组 - 添加区域内的特效"
+description = "选取 ${rect} 内的特效添加到 ${特效组} (清空${clear} 允许重复${duplicate})"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = rect
+[[.args]]
+type = dzeffectgroup
+[[.args]]
+type = boolean
+default = "false"
+[[.args]]
+type = boolean
+default = "false"
+
+[DzForEffectGroup]
+title = "特效组 - 选取做多动作"
+description = "选取 ${特效组} 中的每个特效做动作"
+comment = "在动作里使用 DzGetEnumEffect 获取当前选取的特效"
+category = TC_KKAPI
+[[.args]]
+type = dzeffectgroup
+
+
+[DzEffectGroupClear]
+title = "特效组 - 清除"
+description = "清除 ${特效组}"
+comment = "清除了变成空的特效组，可以重新添加，如果再使用需要删除掉。"
+category = TC_KKAPI
+[[.args]]
+type = dzeffectgroup
+
+[DzEffectGroupDestroy]
+title = "特效组 - 删除"
+description = "删除 ${特效组}"
+comment = ""
+category = TC_KKAPI
+[[.args]]
+type = dzeffectgroup
+
+[DzUpdateEffectSmartPosition]
+title = "特效 - 更新坐标"
+description = "更新 ${特效} 的坐标"
+comment = "先读取Sprite的坐标 然后设置成特效的坐标,如果使用旧版japi修改特效位置 是需要调用该函数刷新坐标。"
+category = TC_KKAPI
+[[.args]]
+type = effect
+
+[DzRemoveEffect]
+title = "特效 - 立即删除(不播放死亡动画)"
+description = "立即删除 ${特效}"
+comment = "不会播放死亡动画立即删除特效"
+category = TC_KKAPI
+[[.args]]
+type = effect
+
+[DzRemoveEffectTimedBJ]
+title = "特效 - 延迟立即删除(不播放死亡动画)"
+description = "在 ${duration} 秒延迟后, 立即删除 ${特效}"
+comment = "不会播放死亡动画且时间到会立即删除特效"
+category = TC_KKAPI
+[[.args]]
+type = real
+[[.args]]
+type = effect
+
+[DzSetEffectAlwaysRender]
+title = "特效 - 设置始终渲染"
+description = "设置特效 ${effect} 始终渲染 ${flag}"
+comment = "可以在 战争迷雾/黑色阴影/屏幕外 时显示此特效,多了会掉帧,可以对体积巨大的模型使用"
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = boolean
+default = "false"
+
+[DzDieEffectTimedBJ]
+title = "特效 - 延迟删除"
+description = "在 ${duration} 秒延迟后, 删除 ${特效}"
+comment = "时间到后会播放死亡动画并在平衡性常数时间后删除特效"
+category = TC_KKAPI
+[[.args]]
+type = real
+[[.args]]
+type = effect
+
+[DzSetEffectGroupBlacklist]
+title = "特效 - 设置特效组黑名单(异步特效坐标专用)"
+description = "设置 ${特效} 不会被特效组选取 ${flag}"
+comment = "标记后该特效不会被特效组选取到, 异步特效坐标专用， 标记之后不会导致选取异步"
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = boolean
+default = "true"
+
+[DzEffectReplayBirth]
+title = "特效 - 重新播放出生动画"
+description = "重新播放 ${特效} 的出生动画"
+comment = "先播放birth动画, 结束后自动播放stand动画"
+category = TC_KKAPI
+[[.args]]
+type = effect
+
+[DzSetEffectAttachedModelScale]
+title = "特效 - 设置绑定特效的缩放大小"
+description = "设置 ${特效} 绑定模型的缩放 X: ${scaleX} Y: ${scaleY} Z: ${scaleZ}"
+comment = "修改特效模型作为附着模型渲染时的缩放, 设为1.0还原"
+category = TC_KKAPI
+[[.args]]
+type = effect
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+default = "1.0"
+
+[DzFrameSetAttachedModelScale]
+title = "界面 - ui模型 - 设置绑定特效的缩放大小"
+description = "设置 ${frame} ui模型绑定特效的缩放 X: ${scaleX} Y: ${scaleY} Z: ${scaleZ}"
+comment = "修改UI模型控件的模型作为附着模型渲染时的缩放, 设为1.0还原"
+category = TC_KKAPI
+[[.args]]
+type = integer
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+default = "1.0"
+[[.args]]
+type = real
+default = "1.0"
+
+[SaveDzEffectGroupHandle]
+title = "哈希表 - 保存特效组"
+description = "保存特效组到哈希表 ${哈希表} 主Key ${主Key} 子Key ${子Key} 特效组 ${特效组}"
+comment = "保存特效组句柄到哈希表中"
+category = TC_KKAPI
+[[.args]]
+type = hashtable
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+[[.args]]
+type = dzeffectgroup
+
+[DzBuffBarResize]
+title = "界面 - 调整 Buff 栏"
+description = "设置 Buff 栏为 ${row} 行 ${col} 列"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = integer
+default = "2"
+[[.args]]
+type = integer
+default = "4"
+
+[DzSetBuffBarShowDuplicatedBuff]
+title = "界面 - 设置 Buff 栏显示重复 Buff"
+description = "设置 Buff 栏显示重复 Buff：${flag}"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = boolean
+default = "false"
+
+[DzUnitAddBuff]
+title = "Buff - 添加 Buff"
+description = "为 ${target} 添加 Buff：来源 ${source} 类型 ${typeId} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 数据 ${data1} ${data2} ${data3} ${data4} ${data5} ${data6} ${data7} ${data8} ${data9} ${data10} ${data11}"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+[[.args]]
+type = buffcode
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBdet]
+title = "Buff - 添加被探测到 Bdet"
+description = "为 ${target} 添加被探测到 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 探测玩家 ${detectPlayer} 探测类型 ${detectType}"
+comment = "类型填3, 添加后可以被敌人看到自己的隐身状态"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bdet"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = player
+[[.args]]
+type = integer
+default = "3"
+
+[DzUnitAddBuffBUan]
+title = "Buff - 添加操纵死尸 BUan"
+description = "为 ${target} 添加操纵死尸 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 无敌 ${invulnerable}"
+comment = "做为 被召唤出来的死尸 到期后杀死 1为无敌 0不无敌  会受到驱逐魔法的伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BUan"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = integer
+default = "1"
+
+[DzUnitAddBuffBFig]
+title = "Buff - 添加召唤出来的物品 BFig"
+description = "为 ${target} 添加召唤出来的物品 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "做为 被物品召唤出来的召唤物 到期后杀死 会受到驱逐魔法的伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BFig"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBEfn]
+title = "Buff - 添加自然之力 BEfn"
+description = "为 ${target} 添加自然之力 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "做为 被自然之力召唤出来的树人 到期后杀死 会受到驱逐魔法的伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BEfn"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBhwd]
+title = "Buff - 添加治疗守卫 Bhwd"
+description = "为 ${target} 添加治疗守卫 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "做为 被召唤出来的治疗守卫 到期后杀死 会受到驱逐魔法的伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bhwd"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBplg]
+title = "Buff - 添加疾病云雾 Bplg"
+description = "为 ${target} 添加疾病云雾 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "做为 疾病云雾的蝗虫单位 无法选中 到期后杀死 会受到驱逐魔法的伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bplg"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBrai]
+title = "Buff - 添加骷髅战士 Brai"
+description = "为 ${target} 添加骷髅战士 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "做为 被召唤出来的骷髅战士 到期后杀死  会受到驱逐魔法的伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Brai"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBHwe]
+title = "Buff - 添加水元素 BHwe"
+description = "为 ${target} 添加水元素 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "做为 被召唤出来的水元素 到期后杀死  会受到驱逐魔法的伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BHwe"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBTLF]
+title = "Buff - 添加定时的生命 BTLF"
+description = "为 ${target} 添加定时的生命 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "做为 定时的生命 到期后杀死  会受到驱逐魔法的伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BTLF"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBdef]
+title = "Buff - 添加守护卷轴 Bdef"
+description = "为 ${target} 添加守护卷轴 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 护甲 ${armor}"
+comment = "能添加绿字护甲的buff"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bdef"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBdig]
+title = "Buff - 添加吞噬 Bdig"
+description = "为 ${target} 添加吞噬 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 每秒伤害 ${dps}"
+comment = "每秒对target造成伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bdig"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBHds]
+title = "Buff - 添加神圣护甲 BHds"
+description = "为 ${target} 添加神圣护甲 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "持续时间内无敌"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BHds"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNdo]
+title = "Buff - 添加魔鬼缠身 BNdo"
+description = "为 ${target} 添加魔鬼缠身 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 每秒伤害 ${dps} 所有者 ${owner} 单位类型 ${unitId} 数量 ${count} 生命周期 ${lifeTime} 召唤 Buff ${summonBuffId}"
+comment = "每秒造成伤害 持续时间内死亡 会召唤单位"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNdo"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = player
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = real
+[[.args]]
+type = buffcode
+default = "BNdi"
+
+[DzUnitAddBuffBNdi]
+title = "Buff - 添加魔鬼缠身 (奴) BNdi"
+description = "为 ${target} 添加魔鬼缠身 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "作为被 召唤的单位 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNdi"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNdh]
+title = "Buff - 添加醉酒云雾 BNdh"
+description = "为 ${target} 添加醉酒云雾 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 移速 ${moveSpeed} % 攻速 ${attackSpeed} % 禁用类型 ${disableType} 丢失概率 ${missChance} %"
+comment = "持续时间内 增加减少移速百分比 增加减少攻速百分比 增加减少丢失概率 负数减少"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNdh"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+[[.args]]
+type = real
+
+[DzUnitAddBuffBOeq]
+title = "Buff - 添加地震 BOeq"
+description = "为 ${target} 添加地震 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 移速 ${moveSpeed} % 攻速 ${attackSpeed} % "
+comment = "持续时间内 增加减少移速百分比 增加减少攻速百分比 负数减少"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BOeq"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBeat]
+title = "Buff - 添加吃树 Beat"
+description = "为 ${target} 添加吃树 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 生命恢复 ${health} % 魔法恢复 ${mana} %"
+comment = "持续时间内 生命恢复百分比 魔法恢复百分比 "
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Beat"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBgra]
+title = "Buff - 添加拔树 Bgra"
+description = "为 ${target} 添加拔树 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 攻击次数 ${attackCount} 禁用武器 ${disableWeapon} 启用武器 ${enableWeapon} 树木 ${treeId}"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bgra"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+[[.args]]
+type = destructablecode
+default = "LTlt"
+
+[DzUnitAddBuffBena]
+title = "Buff - 添加诱捕 (空中的) Bena"
+description = "为 ${target} 添加诱捕 (空中的) Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 所有者 ${owner} 下落时间 ${fallTime} 高度 ${height} 近战范围 ${meleeRange}"
+comment = "持续时间内不能移动 并且飞行单位会落到地面 近战单位可以设置攻击距离"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bena"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = player
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBeng]
+title = "Buff - 添加诱捕 (地面的) Beng"
+description = "为 ${target} 添加诱捕 (地面的) Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 所有者 ${owner} 下落时间 ${fallTime} 高度 ${height} 近战范围 ${meleeRange}"
+comment = "持续时间内不能移动 并且飞行单位会落到地面 近战单位可以设置攻击距离"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Beng"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = player
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBwea]
+title = "Buff - 添加蛛网 (空中的) Bwea"
+description = "为 ${target} 添加蛛网 (空中的) Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 所有者 ${owner} 下落时间 ${fallTime} 高度 ${height} 近战范围 ${meleeRange}"
+comment = "持续时间内不能移动 并且飞行单位会落到地面 近战单位可以设置攻击距离"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bwea"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = player
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBweb]
+title = "Buff - 添加蛛网 (地面的) Bweb"
+description = "为 ${target} 添加蛛网 (地面的) Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 所有者 ${owner} 下落时间 ${fallTime} 高度 ${height} 近战范围 ${meleeRange}"
+comment = "持续时间内不能移动 并且飞行单位会落到地面 近战单位可以设置攻击距离"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bweb"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = player
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBEer]
+title = "Buff - 添加纠缠根须 BEer"
+description = "为 ${target} 添加纠缠根须 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 每秒伤害 ${dps}"
+comment = "持续期间不能移动 不能攻击 并且每秒受到伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BEer"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBcrsV2]
+title = "Buff - 添加诅咒 Bcrs"
+description = "为 ${target} 添加诅咒 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 丢失概率 ${missChance} %"
+comment = "持续期间 攻击丢失百分比"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bcrs"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBeye]
+title = "Buff - 添加岗哨守卫 Beye"
+description = "为 ${target} 添加岗哨守卫 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "作为被 召唤的岗哨守卫 持续时间内隐身 攻击不会显影 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Beye"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBfae]
+title = "Buff - 添加精灵之火 Bfae"
+description = "为 ${target} 添加精灵之火 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 所有者 ${owner} 护甲降低 ${armorReduce}"
+comment = "持续期间 减少护甲"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bfae"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = player
+[[.args]]
+type = real
+
+[DzUnitAddBuffBshs]
+title = "Buff - 添加影子权杖 Bshs"
+description = "为 ${target} 添加影子权杖 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 所有者 ${owner}"
+comment = "添加后可以被敌人看到自己的隐身状态"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bshs"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = player
+
+[DzUnitAddBuffBNlm]
+title = "Buff - 添加炎魔 BNlm"
+description = "为 ${target} 添加炎魔 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 分裂数量 ${splitCount} 分裂延迟 ${splitDelay} 所需攻击 ${attackNeeded} 生命加成 ${healthBonus} 生命周期加成 ${lifeTimeBonus} 最大数量 ${maxCount} 剩余数量 ${remainingCount} 距离 ${distance}"
+comment = "会分裂单位 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNlm"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = integer
+[[.args]]
+type = real
+[[.args]]
+type = integer
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNso]
+title = "Buff - 添加灵魂燃烧 BNso"
+description = "为 ${target} 添加灵魂燃烧 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 伤害 ${damage} 间隔 ${interval} 移速降低 ${moveSpeedReduce} 倍 攻速降低 ${attackSpeedReduce} 倍 攻击降低 ${attackReduce} 倍"
+comment = "持续期间受到伤害 并且 降低移速 攻速 攻击力 倍数"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNso"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBPSE]
+title = "Buff - 添加被击晕的 BPSE"
+description = "为 ${target} 添加被击晕的 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "持续期间 晕眩 不能攻击移动"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BPSE"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBHfa]
+title = "Buff - 添加烈焰风暴 BHfa"
+description = "为 ${target} 添加烈焰风暴 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 伤害 ${damage}"
+comment = "这个伤害可能没什么作用 加了仅仅是防止被其他烈焰风暴aoe伤害而已"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BHfa"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBUfa]
+title = "Buff - 添加霜冻护甲 BUfa"
+description = "为 ${target} 添加霜冻护甲 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 减益持续 ${debuffDuration} 护甲 ${armor}"
+comment = "持续时间获得 额外护甲"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BUfa"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBfro]
+title = "Buff - 添加被减速的 Bfro"
+description = "为 ${target} 添加被减速的 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 移速 ${moveSpeed} % 攻速 ${attackSpeed} %"
+comment = "持续期间 增加减少 移速 攻速 百分比 负数减少"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bfro"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBOhx]
+title = "Buff - 添加妖术 BOhx"
+description = "为 ${target} 添加妖术 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 单位类型 ${unitId}"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BOhx"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = unitcode
+
+[DzUnitAddBuffBNht]
+title = "Buff - 添加恐怖嚎叫 BNht"
+description = "为 ${target} 添加恐怖嚎叫 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 伤害增加 ${damageIncrease} % 护甲 ${armor} 生命恢复 ${healthRegen} 魔法恢复 ${manaRegen}"
+comment = "持续期间 增加减少 攻击 护甲 生命恢复 魔法恢复  负数减少"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNht"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBprg]
+title = "Buff - 添加净化 Bprg"
+description = "为 ${target} 添加净化 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 移速更新次数 ${moveSpeedUpdateCount} 攻速更新次数 ${attackSpeedUpdateCount} 暂停持续 ${pauseDuration} 英雄暂停 ${heroPauseDuration}"
+comment = "获得时会暂停单位 之后减速"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bprg"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBhea]
+title = "Buff - 添加医疗 Bhea"
+description = "为 ${target} 添加医疗 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "没有治疗效果  添加之后不会被其他技能治疗"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bhea"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBrej]
+title = "Buff - 添加生命恢复 Brej"
+description = "为 ${target} 添加生命恢复 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 生命 ${health} 魔法 ${mana}"
+comment = "持续时间内 恢复生命值 恢复魔法值  参数是总的恢复量"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Brej"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBIrm]
+title = "Buff - 添加净化药水 BIrm"
+description = "为 ${target} 添加净化药水 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 魔法 ${mana} 被攻击时驱散 ${dispel}"
+comment = "恢复魔法值  最后一个参数填1被攻击时驱散"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BIrm"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+
+[DzUnitAddBuffBIrl]
+title = "Buff - 添加再生物品 BIrl"
+description = "为 ${target} 添加再生物品 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 生命 ${health} 驱散 ${dispel}"
+comment = "恢复生命值  最后一个参数填1被攻击时驱散"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BIrl"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+
+[DzUnitAddBuffBIrg]
+title = "Buff - 添加生命恢复 BIrg"
+description = "为 ${target} 添加生命恢复 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 生命 ${health} 魔法 ${mana} 驱散 ${dispel}"
+comment = "恢复生命值 恢复魔法值  最后一个参数填1被攻击时驱散"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BIrg"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+
+[DzUnitAddBuffBfre]
+title = "Buff - 添加冰冻 Bfre"
+description = "为 ${target} 添加冰冻 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 镜像 ${mirrorImage}"
+comment = "持续时间 不能移动  最后一个参数 镜像单位填1 否则填0"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bfre"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = integer
+default = "0"
+
+[DzUnitAddBuffBIcb]
+title = "Buff - 添加腐蚀 BIcb"
+description = "为 ${target} 添加腐蚀 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 护甲降低 ${armorReduce}"
+comment = "持续时间内 降低护甲 "
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BIcb"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBIrb]
+title = "Buff - 添加再生 BIrb"
+description = "为 ${target} 添加再生 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "作为被复活的召唤物 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BIrb"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBIpv]
+title = "Buff - 添加吸血药水 BIpv"
+description = "为 ${target} 添加吸血药水 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 生命偷取值 ${lifeSteal} 伤害奖励 ${damageBonus}"
+comment = "生命偷取值 0.75 就是每次伤害的75%的回复生命值,  并且期间增加攻击力"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BIpv"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+default = 0.75
+[[.args]]
+type = real
+default = 12
+
+[DzUnitAddBuffBUcb]
+title = "Buff - 添加腐尸甲虫 BUcb"
+description = "为 ${target} 添加腐尸甲虫 Buff：来源 ${source} 显示 ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration}"
+comment = "作为被召唤的甲虫 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BUcb"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBEia]
+title = "Buff - 添加献祭(施法者) BEia"
+description = "为 ${target} 添加献祭(施法者) Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 伤害 ${damage}"
+comment = "单独添加没有效果 要跟 `Buff - 添加献祭 BEim` 一起添加到单位身上 "
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BEia"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBEim]
+title = "Buff - 添加献祭 BEim"
+description = "为 ${target} 添加献祭 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 魔法消耗 ${manaCost} 间隔 ${interval} 范围 ${area} 伤害 ${damage} 目标允许 ${targetFlags} 所有者 ${owner}"
+comment = "持续时间内 消耗魔法 对范围造成伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BEim"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = player
+
+[DzUnitAddBuffBNpi]
+title = "Buff - 添加永久的献祭 BNpi"
+description = "为 ${target} 添加永久的献祭 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 魔法消耗 ${manaCost} 间隔 ${interval} 范围 ${area} 伤害 ${damage} 目标允许 ${targetFlags} 所有者 ${owner}"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNpi"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = player
+
+[DzUnitAddBuffBpig]
+title = "Buff - 添加永久的献祭 Bpig"
+description = "为 ${target} 添加永久的献祭 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 魔法消耗 ${manaCost} 间隔 ${interval} 范围 ${area} 伤害 ${damage} 目标允许 ${targetFlags} 所有者 ${owner}"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bpig"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = player
+
+[DzUnitAddBuffBIcf]
+title = "Buff - 添加火焰风衣 BIcf"
+description = "为 ${target} 添加火焰风衣 Buff ${buffId} 等级 ${level} 优先级 ${priority} 持续 ${duration} 魔法消耗 ${manaCost} 间隔 ${interval} 范围 ${area} 伤害 ${damage} 目标允许 ${targetFlags} 所有者 ${owner}"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BIcf"
+[[.args]]
+type = integer
+default = "1"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = player
+
+[DzStartManageInventory]
+title = "物品栏 - 设置物品栏格子数量"
+description = "设置物品栏格子数量为 ${maxSize}"
+comment = "初始化修改格子数量后, 可以超过6格拾取 并且通过 `物品栏 - 获取物品栏按钮` 获取超过6格的ui 然后把ui设置大小跟锚点位置。通过 `单位持有物品` 获取超过6格的物品handle"
+category = TC_KKPRE
+[[.args]]
+type = integer
+default = "6"
+
+[DzSetInventoryHotkey]
+title = "物品栏 - 设置快捷键"
+description = "设置物品栏第 ${slot} 格的快捷键为 ${hotkey}"
+comment = "可以为超过6格的物品栏格子绑定快捷键"
+category = TC_KKPRE
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = string
+
+[DzUnitAddBuffBUim]
+title = "Buff - 添加穿刺 BUim"
+description = "为单位 ${target} 添加 BUim(穿刺) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 伤害 ${damage} 空中停留时间 ${airduration}"
+comment = "会暂停 空中+持续 的总时间 并造成伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BUim"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNin]
+title = "Buff - 添加地狱火 BNin"
+description = "为单位 ${target} 添加 BNin(地狱火) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 目标X ${x} 目标Y ${y}"
+comment = "添加时杀死target xy目前看不出有什么作用"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BNin"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBinf]
+title = "Buff - 添加心灵之火 Binf"
+description = "为单位 ${target} 添加 Binf(心灵之火) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 攻击增加(%) ${attackincrease} 防御增加 ${armor} 生命恢复速度 ${healthregen} 魔法恢复速度 ${manaregen}"
+comment = "攻击是增加百分比, 防御 跟 恢复速度 都是固定值"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Binf"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBinv]
+title = "Buff - 添加隐形术 Binv"
+description = "为单位 ${target} 添加 Binv(隐形术) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 渐隐时间${fadeduration}"
+comment = "持续时间内隐身, 攻击或施法时解除"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Binv"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBvul]
+title = "Buff - 添加无敌的 Bvul"
+description = "为单位 ${target} 添加 Bvul(无敌的) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "持续时间内无敌"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bvul"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBlsh]
+title = "Buff - 添加闪电护盾 Blsh"
+description = "为单位 ${target} 添加 Blsh(闪电护盾) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 伤害间隔 ${interval} 影响范围 ${AOE} 伤害 ${damage}"
+comment = "持续时间内 对范围内的敌人造成伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Blsh"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBlshV2]
+title = "Buff - 添加闪电护盾 Blsh"
+description = "为单位 ${target} 添加 Blsh(闪电护盾) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 伤害间隔 ${interval} 影响范围 ${AOE} 伤害 ${damage} 目标允许 ${targetflags} 玩家 ${player}"
+comment = "持续时间内 对范围内的敌人造成伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Blsh"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_Enemy"
+[[.args]]
+type = player
+
+[DzUnitAddBuffBams]
+title = "Buff - 添加反魔法外壳 Bams"
+description = "为单位 ${target} 添加 Bams(反魔法外壳) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "持续时间内 魔法免疫"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bams"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBam2]
+title = "Buff - 添加反魔法外壳 (额外的) Bam2"
+description = "为单位 ${target} 添加 Bam2(反魔法外壳 (额外的)) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 护盾生命 ${shield}"
+comment = "持续时间内 护盾会抵消魔法伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bam2"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBmfl]
+title = "Buff - 添加魔力之焰 Bmfl"
+description = "为单位 ${target} 添加 Bmfl(魔力之焰) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 影响范围 ${AOE} 每点魔法造成伤害(单位) ${damagepermana} 每点魔法造成伤害(英雄) ${herodamagepermana} 最大伤害(单位) ${maxdamage} 最大伤害(英雄) ${heromaxdamage} 施法距离 ${range} 魔法施法时间 ${cd} 仅溅射伤害有魔法单位 ${onlyunithavemana} 目标允许 ${targetflags} 魔法效果 ${buff}"
+comment = "持续时间内 周围敌人释放技能时 会受到伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bmfl"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+[[.args]]
+type = TargetFlags
+default = "TargetFlags_NotSelf"
+[[.args]]
+type = buffcode
+default = "Bmfa"
+
+[DzUnitAddBuffBNms]
+title = "Buff - 添加魔法护盾 BNms"
+description = "为单位 ${target} 添加 BNms(魔法护盾) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 每点魔法抵消的伤害值 ${damageabsorbpermana} 伤害吸收(%) ${absorbpercent}"
+comment = "持续时间内 根据当前蓝量 跟 伤害吸收比 抵消魔法伤害 "
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNms"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBOmi]
+title = "Buff - 添加镜像 BOmi"
+description = "为单位 ${target} 添加 BOmi(镜像) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 施加伤害(倍数) ${damagedeal} 所受伤害(倍数) ${damagetaken}"
+comment = "作为镜像单位 持续期间 伤害小于1是减伤大于1是增伤, 到期后会杀死单位"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BOmi"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBIil]
+title = "Buff - 添加幻象物品 BIil"
+description = "为单位 ${target} 添加 BIil(幻象物品) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 施加伤害(倍数) ${damagedeal} 所受伤害(倍数) ${damagetaken}"
+comment = "作为镜像单位 持续期间 伤害小于1是减伤大于1是增伤, 到期后会杀死单位"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BIil"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNpa]
+title = "Buff - 添加寄生虫 BNpa"
+description = "为单位 ${target} 添加 BNpa(寄生虫) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 每秒伤害 ${DPS} 移速减少(%) ${movespeedreduce} 攻速减少(%) ${attackspeedreduce} 叠加类型 ${stacktype} 单位类型 ${unitID} 召唤单位数量 ${count} 召唤单位持续时间 ${timelife} 召唤单位所属玩家 ${player} 魔法效果 ${buff}"
+comment = "持续时间内掉血 减速 并且期间死亡 会召唤单位"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNpa"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+default = "8"
+[[.args]]
+type = unitcode
+default = "ncfs"
+[[.args]]
+type = integer
+[[.args]]
+type = real
+[[.args]]
+type = player
+[[.args]]
+type = buffcode
+default = "BNpm"
+
+[DzUnitAddBuffBNpm]
+title = "Buff - 添加寄生虫 BNpm"
+description = "为单位 ${target} 添加 BNpm(寄生虫) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "作为召唤单位 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNpm"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBpsh]
+title = "Buff - 添加变相移动 Bpsh"
+description = "为单位 ${target} 添加 Bpsh(变相移动) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "持续时间内 模型不可见 且 无法被攻击"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Bpsh"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBply]
+title = "Buff - 添加变形术 Bply"
+description = "为单位 ${target} 添加 Bply(变形术) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 单位类型 ${unitID}"
+comment = "持续时间内 变成小动物 且不能施法跟攻击"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Bply"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = unitcode
+
+[DzUnitAddBuffBNsa]
+title = "Buff - 添加避难权杖 BNsa"
+description = "为单位 ${target} 添加 BNsa(避难权杖) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 回复延迟 ${delay} 每秒生命恢复 ${healthregenpersec} 魔法伤害参数 ${magicdamage}"
+comment = "持续时间内 不能移动跟攻击施法 恢复生命值"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNsa"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBHtc]
+title = "Buff - 添加雷霆一击 BHtc"
+description = "为单位 ${target} 添加 BHtc(雷霆一击) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 移速增加(倍数) ${movespeed} 攻速增加(倍数) ${attackspeed}"
+comment = "持续时间内 增加或负数减少 移动速度 攻击速度 倍数-0.5 是降低50%的意思 "
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BHtc"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBCtc]
+title = "Buff - 添加雷霆一击 BCtc"
+description = "为单位 ${target} 添加 BCtc(雷霆一击) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 移速增加(倍数) ${movespeed} 攻速增加(倍数) ${attackspeed}"
+comment = "持续时间内 增加或负数减少 移动速度 攻击速度 倍数-0.5 是降低50%的意思 "
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BCtc"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNfy]
+title = "Buff - 添加口袋工厂 BNfy"
+description = "为单位 ${target} 添加 BNfy(口袋工厂) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 生产单位间隔 ${delay} 生产单位类型 ${unitID} 生产单位持续时间 ${timelife} 魔法效果 ${buff} 生产单位位移 ${offset} 约束范围 ${range}"
+comment = "作为口袋工厂召唤单位, 持续时间内按间隔召唤生产单位, 到期后工厂单位会被杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNfy"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = unitcode
+[[.args]]
+type = real
+[[.args]]
+type = buffcode
+default = "BNcg"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNcg]
+title = "Buff - 添加人工地精 BNcg"
+description = "为单位 ${target} 添加 BNcg(人工地精) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 中心X ${x} 中心Y ${y} 约束范围 ${range}"
+comment = "作为召唤单位 到期后被杀死, 离开约束范围也会被杀死, x y 仅在单位为 null 时使用"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNcg"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNto]
+title = "Buff - 添加龙卷风 BNto"
+description = "为单位 ${target} 添加 BNto(龙卷风) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "作为龙卷风召唤单位 持续时间内无敌 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNto"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBuhf]
+title = "Buff - 添加邪恶狂热 Buhf"
+description = "为单位 ${target} 添加 Buhf(邪恶狂热) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 每秒伤害 ${DPS} 攻速增加(%) ${attackspeed}"
+comment = "持续时间内 每秒受到伤害 并且增加攻速 "
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Buhf"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBuns]
+title = "Buff - 添加反召唤 Buns"
+description = "为单位 ${target} 添加 Buns(反召唤) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 回收资源率(%) ${recyclerate} 每秒伤害 ${DPS}"
+comment = "单位被暂停 持续受到伤害 并且获得金币跟木材  这个持续时间无效 直到死亡为止"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Buns"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBOvc]
+title = "Buff - 添加巫毒(施法者) BOvc"
+description = "为单位 ${target} 添加 BOvc(巫毒(施法者)) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "只有特效 没别的附加效果"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BOvc"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBOvd]
+title = "Buff - 添加巫毒 BOvd"
+description = "为单位 ${target} 添加 BOvd(巫毒) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "持续时间内 单位无敌"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BOvd"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBOwd]
+title = "Buff - 添加守卫 BOwd"
+description = "为单位 ${target} 添加 BOwd(守卫) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "作为被召唤出来的守卫 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BOwd"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBImo]
+title = "Buff - 添加怪兽诱捕守卫 BImo"
+description = "为单位 ${target} 添加 BImo(怪兽诱捕守卫) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 影响区域 ${AOE} 激活延迟 ${delay} 引诱间隔 ${interval}"
+comment = "到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BImo"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNwm]
+title = "Buff - 添加水奴 BNwm"
+description = "为单位 ${target} 添加 BNwm(水奴) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "作为被召唤出来的单位, 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNwm"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBmec]
+title = "Buff - 添加机械类的小玩艺 Bmec"
+description = "为单位 ${target} 添加 Bmec(机械类的小玩艺) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "作为被召唤出来的单位, 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bmec"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNsg]
+title = "Buff - 添加熊 BNsg"
+description = "为单位 ${target} 添加 BNsg(熊) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "作为被召唤出来的单位, 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNsg"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNsq]
+title = "Buff - 添加豪猪 BNsq"
+description = "为单位 ${target} 添加 BNsq(豪猪) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "作为被召唤出来的单位, 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNsq"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNsw]
+title = "Buff - 添加战鹰 BNsw"
+description = "为单位 ${target} 添加 BNsw(战鹰) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "作为被召唤出来的单位, 到期后杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNsw"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBOwk]
+title = "Buff - 添加疾步风 BOwk"
+description = "为单位 ${target} 添加 BOwk(疾步风) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 转变时间 ${fadeduration} 移速增加(倍数) ${movespeed} 额外攻击伤害 ${attackbonus} 启用额外攻击伤害 ${enableattackbonus}"
+comment = "持续时间内 隐身 + 移动速度 最后1启用 0不启用, 攻击或者施法后解除"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BOwk"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+
+[DzUnitAddBuffBfrz]
+title = "Buff - 添加冰冻喷吐 Bfrz"
+description = "为单位 ${target} 添加 Bfrz(冰冻喷吐) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "持续时间内 被冰冻 不能施法攻击移动"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Bfrz"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBliq]
+title = "Buff - 添加液体炸弹 Bliq"
+description = "为单位 ${target} 添加 Bliq(液体炸弹) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 每秒伤害 ${DPS} 移速减少(倍数) ${movespeedreduce} 攻速减少(倍数) ${attackspeedreduce} 允许修理 ${allowrepair}"
+comment = "持续期间减移动速度 攻击速度"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Bliq"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+
+[DzUnitAddBuffBNab]
+title = "Buff - 添加酸性炸弹 BNab"
+description = "为单位 ${target} 添加 BNab(酸性炸弹) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 护甲减少 ${armorreduce} 伤害数值 ${damage} 伤害间隔 ${interval} 移速减少(倍数) ${movespeedreduce} 攻速减少(倍数) ${attackspeedreduce}"
+comment = "持续时间内 减少移速 攻速 护甲, 并且持续受到伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BNab"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNsl]
+title = "Buff - 添加灵魂保存 BNsl"
+description = "为单位 ${target} 添加 BNsl(灵魂保存) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "持续时间内无敌，到期后会被杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BNsl"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBHbn]
+title = "Buff - 添加驱散 BHbn"
+description = "为单位 ${target} 添加 BHbn(驱散) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 移速增加(倍速) ${movespeed} 攻速增加(倍数) ${attackspeed}"
+comment = "持续时间内 无法攻击施法  增加或负数降低移速攻速"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BHbn"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBbsk]
+title = "Buff - 添加狂战士 Bbsk"
+description = "为单位 ${target} 添加 Bbsk(狂战士) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 移速增加(倍数) ${movespeed} 攻速增加(倍数) ${attackspeed} 所受伤害增加(倍数) ${damagetaken}"
+comment = "期间增加 或者负数减少 移动速度 攻击速度 受到伤害加深"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Bbsk"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNdm]
+title = "Buff - 添加黑暗之奴 BNdm"
+description = "为单位 ${target} 添加 BNdm(黑暗之奴) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "BNdm"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNba]
+title = "Buff - 添加黑暗之箭 BNba"
+description = "为单位 ${target} 添加 BNba(黑暗之箭) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 玩家 ${player} 召唤单位类型 ${unitID} 召唤单位数量 ${count} 召唤单位持续时间 ${timelife} 魔法效果 ${buff}"
+comment = "目标单位 需要在单位物编 战斗 - 死亡类型   这一项勾选可召唤, 在持续时间内死亡可以召唤单位"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BNba"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = player
+[[.args]]
+type = unitcode
+[[.args]]
+type = integer
+[[.args]]
+type = real
+[[.args]]
+type = buffcode
+default = "BNdm"
+
+[DzUnitAddBuffBNrd]
+title = "Buff - 添加火焰雨 BNrd"
+description = "为单位 ${target} 添加 BNrd(火焰雨) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 每秒伤害 ${DPS}"
+comment = "持续期间 受到伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BNrd"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBblo]
+title = "Buff - 添加嗜血术 Bblo"
+description = "为单位 ${target} 添加 Bblo(嗜血术) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 移速增加(%) ${movespeed} 攻速增加(%) ${attackspeed} 模型放大比例(%) ${modelscale}"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Bblo"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBfzy]
+title = "Buff - 添加狂热 Bfzy"
+description = "为单位 ${target} 添加 Bfzy(狂热) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 移速增加(倍数) ${movespeed} 攻速增加(倍数) ${attackspeed} 模型放大比例(倍数) ${modelscale}"
+comment = "增加攻速 移速 放大模型"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Bfzy"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBNbf]
+title = "Buff - 添加火焰呼吸 BNbf"
+description = "为单位 ${target} 添加 BNbf(火焰呼吸) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 每秒伤害 ${DPS}"
+comment = "持续时间内 每秒受到伤害"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BNbf"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBCbf]
+title = "Buff - 添加霜冻闪电 BCbf"
+description = "为单位 ${target} 添加 BCbf(霜冻闪电) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 每秒伤害 ${DPS}"
+comment = ""
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "BCbf"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+
+[DzUnitAddBuffBpos]
+title = "Buff - 添加占据 Bpos"
+description = "为单位 ${target} 添加 Bpos(占据) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 目标无敌 ${invul} 目标魔法免疫 ${immue}"
+comment = "持续期间 单位被暂停   1无敌 0不无敌 "
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Bpos"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = integer
+[[.args]]
+type = integer
+
+[DzUnitAddBuffBpoc]
+title = "Buff - 添加占据 (施法者) Bpoc"
+description = "为单位 ${target} 添加 Bpoc(占据 (施法者)) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "持续期间头顶多个特效"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bpoc"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBcmg]
+title = "Buff - 添加控制魔法 Bcmg"
+description = "为单位 ${target} 添加 Bcmg(控制魔法) 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration}"
+comment = "到期后被杀死"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = buffcode
+default = "Bcmg"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+
+[DzUnitAddBuffBclf]
+title = "Buff - 添加乌云技能 Bclf"
+description = "为单位 ${target} 添加 Bclf(乌云技能) 来源为 ${source} 显示为 ${buffID} 等级 ${level} 魔法盗取优先级 ${spell_steal_priority} 持续时间 ${duration} 移速增加(倍数) ${movespeed} 攻速增加(倍数) ${attackspeed} 禁止类型(整数) ${disabletype} 失误概率(倍数) ${misschance}"
+comment = "持续时间内 增加或负数减少 移速 攻速,  禁止类型 1近战 2远程 4特殊 8魔法 如果要同时禁止近战跟远程 1+2即可"
+category = TC_KKPRE
+[[.args]]
+type = unit
+[[.args]]
+type = unit
+default = "UnitNull"
+[[.args]]
+type = buffcode
+default = "Bclf"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = integer
+default = "0"
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = real
+[[.args]]
+type = integer
+[[.args]]
+type = real

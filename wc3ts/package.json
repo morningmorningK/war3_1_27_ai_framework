@@ -1,0 +1,51 @@
+{
+  "name": "@eiriksgata/wc3ts",
+  "version": "3.2.11",
+  "description": "TypeScript API for Warcraft III custom maps.",
+  "author": "Eiriksgata",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint src --ext .ts --quiet",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "prepublishOnly": "npm run lint",
+    "version:patch": "npm version patch && git push --follow-tags",
+    "version:minor": "npm version minor && git push --follow-tags",
+    "version:major": "npm version major && git push --follow-tags"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.14.0",
+    "@typescript-eslint/parser": "^8.14.0",
+    "eslint": "^8.57.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.6.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eiriksgata/wc3ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eiriksgata/wc3ts/issues"
+  },
+  "homepage": "https://github.com/eiriksgata/wc3ts#readme",
+  "files": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "warcraft3",
+    "wc3",
+    "typescript",
+    "lua",
+    "tstl",
+    "game-development"
+  ]
+}
