@@ -192,6 +192,21 @@ const TEXT_PRIORITY = 897;
 const TEXT_ALIGN_CENTER = 18;
 
 /**
+ * 每秒那条 `[CommandCardCD] 诊断 …` 日志的开关。
+ *
+ * **当前 `false`**（2026-10-04）：每秒刷一行、一行上百字符，把有用的日志全淹了；
+ * 而且实测那一局全程「单位无效 单位=无」，本来也读不出信息。
+ *
+ * 诊断本身**没有删**（`startDiagnostics()` 整段还在），只是不再挂上去 ——
+ * 「放了技能却没有暗幕」这个现象还没在**选中单位**的情况下确认过，
+ * 哪天要重查，把这里改回 `true` 即可，不必重写。
+ *
+ * 同款写法见 `main.ts` 的 `ENABLE_NATIVE_UI_PROBE`、
+ * `NativeUISystem` 的 `ENABLE_CLIPBOARD_DIAGNOSTICS`。
+ */
+const ENABLE_COMMAND_CARD_DIAGNOSTICS = false;
+
+/**
  * 由屏幕归一化矩形 + 内缩比例算出暗幕几何（**绝对模式**）。
  *
  * `COMMAND_BUTTONS_NORMAL` 里的坐标是以**屏幕左下角**为原点的绝对归一化坐标
@@ -318,7 +333,9 @@ export class CommandCardCooldownUI {
       this.refreshPerFrame();
     });
 
-    this.startDiagnostics();
+    if (ENABLE_COMMAND_CARD_DIAGNOSTICS) {
+      this.startDiagnostics();
+    }
   }
 
   /**

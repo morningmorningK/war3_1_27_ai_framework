@@ -4,6 +4,7 @@ import { ConfigManager } from "./config";
 import { PlayersConfig } from "./config/Players";
 import { MapGeneral } from "./config/Map";
 import { mouseEvents } from "./system/event";
+import { scheduler } from "./system/async";
 import DamageSystem from "./system/damage";
 import { BuffSystem } from "./system/buff";
 import ShieldSystem from "./system/ShieldSystem";
@@ -15,12 +16,16 @@ import { BuffBarUI } from "./system/ui/component/BuffBarUI";
 import { CommandCardCooldownUI } from "./system/ui/component/CommandCardCooldownUI";
 import { RelicBarUI } from "./system/ui/component/RelicBarUI";
 import { UnitBloodToggleUI } from "./system/ui/component/UnitBloodToggleUI";
+import { DisplayToggleUI } from "./system/ui/component/DisplayToggleUI";
+import { FpsDisplay } from "./system/ui/FpsDisplay";
+import { DamageNumberDisplay } from "./system/ui/DamageNumberDisplay";
 import { relicSystemTestExample } from "./test/RelicSystemTestExample";
 import { seedBuffBarDemo } from "./test/BuffBarTestExample";
 import { runSpellCardBulletHellTest } from "./test/BulletHellTestExample";
 import { testAddShield } from "./test/HeroUnitSkillTestExample";
 import { createLogger } from "./utils/logger";
 import { rgeisterUnitSpellEffectEvent } from "./examples/UnitEventExample";
+import { asyncSelfTest } from "./test/AsyncTestExample";
 // TODO(阶段1): 探针验证完毕后删除此行与 initialize() 里的调用
 import { runNativeUIProbe } from "./test/NativeUIProbe";
 
@@ -96,6 +101,7 @@ function main(): void {
     rgeisterUnitSpellEffectEvent();
     // 必须在上一行之后：那一行才同步造出全部单位，早了 Actor.allActors 里是空的
     seedBuffBarDemo();
+    asyncSelfTest();
   });
 }
 
@@ -104,6 +110,15 @@ function main(): void {
  */
 export function initialize(): void {
   ydlua.getInstance().initialize();
+
+  // 异步底座的心跳（`src/system/async/`）。**放在最前面** —— 它是后面所有
+  // 「分片任务 / 延迟回调 / 状态锁」的驱动源，别的 system 起来时它就该在跑了。
+  // 包 try/catch 的理由同下面几处：这里抛出去后面所有 system 的 init 都不会执行。
+  try {
+    scheduler.start();
+  } catch (e) {
+    log.error(`Scheduler.start() 抛出异常，异步底座不可用：${e}`);
+  }
 
   try {
     Frame.loadTOC("resource\\fdf\\path.toc");
@@ -146,6 +161,15 @@ export function initialize(): void {
     log.error(`UnitBloodToggleUI.create() 抛出异常，已隔离：${e}`);
   }
 
+  // 右上角血条按钮**下方**那一列显示开关（帧率 / 伤害数字）。
+  // 坐标上必须排在 UnitBloodToggleUI 之后，理由见 DisplayToggleUI 文件头的布局耦合说明。
+  // 包 try/catch 的理由同上：这里抛出去后面所有 system 的 init 都不会执行。
+  try {
+    DisplayToggleUI.getInstance().create();
+  } catch (e) {
+    log.error(`DisplayToggleUI.create() 抛出异常，已隔离：${e}`);
+  }
+
   PlayersConfig.CameraControl();
   UnitBlood.registerLocalDrawEvent();
 
@@ -154,7 +178,10 @@ export function initialize(): void {
   DzEnableWideScreen(true);
 
   mouseEvents.initialize();
-  DzToggleFPS(true);
+  // 原来这里写死 `DzToggleFPS(true)` —— 那一句**实测没有效果**（KKWE 的 FPS 接口是坏的，
+  // 详见 `FpsDisplay.ts` 文件头）。现在改成自绘：`FpsDisplay` 自己数帧、自己画，
+  // 右上角那个「帧率显示」按钮控制的是它。
+  FpsDisplay.init();
 
   DzFrameUnlockMouseRectLimit(true);
 
@@ -162,6 +189,17 @@ export function initialize(): void {
   DamageSystem.getInstance().initialize();
   BuffSystem.getInstance().init();
   ShieldSystem.getInstance().init();
+
+  // 伤害飘字。**位置在 `ShieldSystem.init()` 之后** —— 只是读起来因果清楚
+  // （「先扣护盾、再飘字」），实际先后由事件优先级决定，与登记顺序无关：
+  // 本类用 `DAMAGE_TEXT_PRIORITY = 0`，ShieldSystem 用 10，数值大的先跑。
+  // 包 try/catch 的理由同上面几处：bootstrap.lua 调 main.initialize() 时没有 pcall，
+  // 这里抛出去后面所有语句都不会执行。
+  try {
+    DamageNumberDisplay.init();
+  } catch (e) {
+    log.error(`DamageNumberDisplay.init() 抛出异常，已隔离：${e}`);
+  }
 
   // 给场上已有的单位补血条 + 订阅之后出现的单位。
   //
