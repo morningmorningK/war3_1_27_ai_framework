@@ -9,35 +9,120 @@ import { onFrame } from "../FrameLoop";
 const log = createLogger("UnitBlood");
 
 /**
- * 等级数字框的几何，单位是本文件自己的 2400x1800 坐标系（和别处 `xx / 2400` 一样）。
+ * 底板 `01.tga` 的几何，单位是本文件自己的 2400x1800 坐标系（和别处 `xx / 2400` 一样）。
  *
- * 底图 `01.tga` 是 140x28 像素，而 frame 是 130x28 —— 横向被压了 130/140，
- * 所以底图上的像素位置要乘这个比例才能变成 frame 内的坐标。
+ * 纹理实测像素（数出来的，不是估的）：
+ *
+ * ```
+ *          x2..3        x24..25          x136..137
+ *           左边框       分隔线(双线)        右边框
+ *   y2..3   ┌──────────────────────────────────┐
+ *           │        内容区 x4..136 / y4..24      │  ← y24..25 下边框
+ *           └──────────────────────────────────┘
+ * ```
+ *
+ * 内容区是**不透明纯黑** `(0,0,0,255)`，再外面一圈才是透明 —— 这点很重要：
+ * 遮盖块（`levelMaskFrame`）之所以能用纯黑盖掉分隔线而不留痕迹，就是靠它。
+ *
+ * ⚠️ 纹理是 140 宽，而 frame 不是 —— 横向被压过，压多少由 `PLATE_WIDTH_*` 决定。
+ * 所以**任何从纹理像素换算 frame 坐标的地方都必须乘 `plateWidth / PLATE_TEX_WIDTH`**，
+ * 不许写死一个比例（这里原先写死过 130/140，普通单位底板一变宽就错位了）。
  */
+
+/** 底板纹理的像素尺寸。裁剪与换算的分母，别拿别的数来除 */
+const PLATE_TEX_WIDTH = 140;
+const PLATE_TEX_HEIGHT = 28;
+
+/** 纹理里「内边框之间」那块内容区的像素范围：x 4..136、y 4..24 */
+const PLATE_TEX_INNER_LEFT = 4;
+const PLATE_TEX_INNER_RIGHT = 136;
 
 /** 数字与框边之间的空隙，左右各一份。框宽 = 数字宽度 + 2 * 这个值 */
 const LEVEL_BOX_PAD = 4;
 
 /**
- * 底图里那条分隔线右边界的 frame 内坐标：第 26 个像素 * (130/140)。
+ * 底图里那条分隔线右边界的**纹理**像素坐标。
  *
- * 实测（数 `01.tga` 像素）：分隔线是**双线**，占纹理 x 24..25，垂直贯穿 y 4..24；
- * 左边框占 x 2..3，上下边框占 y 2..3 / y 24..25，中间是纯黑。
- * 所以「烘死格子的右边界」和「分隔线的右缘」本来就是指同一条边。
+ * 实测：分隔线是**双线**，占纹理 x 24..25，垂直贯穿 y 4..24。所以「烘死格子的右边界」
+ * 和「分隔线的右缘」本来就是同一条边，都在第 26 个像素处。
+ *
+ * ⚠️ 这是**纹理**坐标，不是 frame 坐标 —— 用之前必须乘 `plateWidth / PLATE_TEX_WIDTH`。
+ * 两种分类的底板宽度不同（英雄 130 / 普通单位 108），不换算普通单位就会盖歪。
  */
-const LEVEL_BOX_BAKED_END = (26 * 130) / 140;
+const LEVEL_BOX_TEX_END = 26;
 
 /**
- * 三条 bar（血 / 护盾 / 蓝）的左起点与宽度，单位同 `xx / 2400`。
+ * 三条 bar（血 / 护盾 / 蓝）的左起点与长度。
  *
- * - 英雄：从 26 起 —— 左边那 26 个像素宽的地盘留给等级数字框。
- * - 普通单位：从 4 起 —— 烘死的等级格子不用了，把那块宽度一并吃进来填满。
- *   右端两边保持不动（26 + 100 = 4 + 122 = 126），所以只是往左长了一截、不留空隙。
+ * **英雄是手挑的定值，普通单位由纹理换算 —— 这个不对称是有意的**，两边「对」的标准不同：
+ *
+ * - **英雄**：从 26 起，左边那 26 格留给等级数字框。长度是手调的。
+ * - **普通单位**：没有等级框，血条直接铺满纹理的内容区（x4..136）。
+ *
+ * ⚠️ **这两个数才是宽度的唯一源头 —— 底板宽度是由它们反推出来的**（见构造函数）。
+ * 底板就是包着血条的那圈框，所以只能有一个源头。这里曾经**另有一个独立的
+ * `PLATE_WIDTH_HERO`**，于是「把血条改长、忘了改底板」的时候，血条就从底板右边
+ * 戳出去悬在半空。那个常量已经删掉，改长度底板会自动跟着走。
  */
 const BAR_LEFT_HERO = 26;
-const BAR_WIDTH_HERO = 100;
-const BAR_LEFT_NONHERO = 4;
-const BAR_WIDTH_NONHERO = 122;
+const BAR_WIDTH_HERO = 120;
+const BAR_WIDTH_NONHERO = 90;
+
+/**
+ * 英雄血条的高度（单位同 `xx / 1800`）。
+ *
+ * 普通单位**不用**这个数：它是「底板高 - 内容区起始行」算出来的（见构造函数），
+ * 因为普通单位的底板被裁过，血条必须跟着底板走。英雄底板不裁，所以写死。
+ */
+const BAR_HEIGHT_HERO = 12;
+
+/** 英雄底板高度（单位同 `xx / 1800`），就是纹理原高 —— 英雄不裁，见 `PLATE_HEIGHT_NONHERO` */
+const PLATE_HEIGHT_HERO = 28;
+
+/**
+ * 普通单位的底板高度（单位同 `xx / 1800`）。
+ *
+ * 裁剪方式：`DzFrameSetTexCoord(..., 1, H/28)` **只取纹理上面 H 行**，而 frame 也是 H 高 ——
+ * 于是**纹理行号直接就是帧内 y 坐标，1 行 = 1 个单位**。
+ * 正因如此，下面所有纵向偏移量都写成 `-4/1800` 这样的整数：它们就是纹理行号。
+ *
+ * 纹理纵向实测：0..1 黑边、**2..3 上边框**、4..23 内容区、24..25 下边框、26..27 黑边。
+ *
+ * ⚠️ **边框粗细和这个 H 无关**（2 行 = 2 单位 ≈ 1.2px，恒定）—— 因为这是「裁」不是「压」。
+ * 真实后果只有一个：**内容区可见的高度 = H - 4**，血条就跟着这个走。
+ * 这也正是「底板压到 10 但血条写死 12」会把血条从板底捅出去的原因（血条高度必须与 H 联动）。
+ *
+ * 取 10 是用户手调的：嫌普通单位血条太粗，从 16 一路压下来。
+ * 嫌血条还粗/太细就调这个数 —— 血条会跟着等比变，不用另改。
+ *
+ * ⚠️ 用 `DzFrameSetTexCoord` **裁**纹理，不是把 140x28 压扁到 H 高 ——
+ * 压扁会把上边框一起压细，就不像框了。
+ *
+ * 英雄不能走这条路：它的等级数字框要占满整条（`levelBoxFrame` 的上下边贴到底板上下边），
+ * 裁掉下半截会把数字框拦腰截断。
+ */
+const PLATE_HEIGHT_NONHERO = 12;
+
+/**
+ * 内容区在纹理里的起始行 —— 也就是上边框的下沿。血条、护盾条、遮盖块都从这一行开始。
+ * 见 `PLATE_HEIGHT_NONHERO` 的行号说明。
+ */
+const PLATE_TEX_CONTENT_TOP = 4;
+
+/**
+ * 普通单位血条的**高度系数**，乘在 `actor.hpBarUIHeight` 上。
+ *
+ * 那个字段叫「高度」但其实不是世界高度 —— `updatePosition` 把它加在 `unitY` 上
+ * （地面坐标的 Y，不是 Z），靠相机俯角变成屏幕上的向上位移。所以它纯粹是个手调的魔数，
+ * 默认 100 对普通单位来说抬得太高：屏幕上血条和单位之间空出两三倍身高的距离。
+ *
+ * 1 → 0.6 就是整体下沉 40%，用户要求的「再贴近单位头顶」。
+ * `actor.size` 仍然照乘，所以大单位（投石车之类）的条还是相应更高。
+ *
+ * **英雄不吃这个系数**：它们的条位置本来就调好了，而且英雄模型高得多，
+ * 同一个系数会把条压进模型里。要微调普通单位就改这一个数。
+ */
+const NONHERO_HEIGHT_FACTOR = 0.5;
 
 /**
  * 血条分类。开关是**按分类**控制的，不是按单个单位。
@@ -116,6 +201,19 @@ export class UnitBlood {
    */
   private readonly barFullWidth: number;
 
+  /**
+   * 血条（和护盾条）的**高度**，已除 1800。宽度每帧按百分比算，高度不变 ——
+   * 所以 `updateLifeBar` / `updateShieldBar` 每帧都要用它，不能再写死 12/1800。
+   * 值由构造函数按分类算出来：英雄 12，普通单位跟着被裁过的底板走（见 `PLATE_HEIGHT_NONHERO`）。
+   */
+  private readonly barHeight: number;
+
+  /**
+   * 本实例是不是英雄条。构造函数里分过一次叉就存下来 —— `updateManaBar` 每帧都要问，
+   * 重新调 `categoryOf()` 会白跑一次 `IsUnitType`。
+   */
+  private readonly isHero: boolean;
+
   /** destroy() 只允许生效一次，见该方法的注释 */
   private destroyed: boolean = false;
 
@@ -153,15 +251,53 @@ export class UnitBlood {
 
     // 英雄 / 普通单位的分叉点。分类是每次都能从单位本身重新算出来的固有属性（见 `categoryOf`）。
     const isHero = UnitBlood.categoryOf(actor) === "hero";
-    // 三条 bar 的左起点与宽度：普通单位把烘死的等级格子那块宽度吃进来（详见常量注释）
-    const barLeft = (isHero ? BAR_LEFT_HERO : BAR_LEFT_NONHERO) / 2400;
-    const barWidth = (isHero ? BAR_WIDTH_HERO : BAR_WIDTH_NONHERO) / 2400;
+    this.isHero = isHero;
+
+    // ---- 两种分类的几何 ----
+    //
+    // 英雄：全是手挑的定值，已经调好，**别动**。
+    // 普通单位：长度定死（`BAR_WIDTH_NONHERO` = 英雄的 90%），其余全从纹理反推 ——
+    // 反推的好处是「只改一个数」：改血条长度或底板高度，整条会一起走，不会走散。
+    const plateHeight = isHero ? PLATE_HEIGHT_HERO : PLATE_HEIGHT_NONHERO;
+
+    // 底板宽 **由血条反推**，不能各给一个值 —— 底板就是包着血条的那圈框。
+    // 曾经两者是独立常量，结果「把血条改长、忘了改底板」时血条从底板右边戳出去悬在半空。
+    //
+    // 换算依据：纹理内容区的右缘在第 136 个像素上，血条的右端要正好落在那里，于是
+    //     底板宽 = 血条右端 / 136 * 140
+    // 英雄的血条右端 = BAR_LEFT_HERO + BAR_WIDTH_HERO（左边那 26 格是等级数字框的地盘）；
+    // 普通单位的血条从内容区左缘（第 4 像素）起，铺满整条内容区。
+    //
+    // 验算：英雄 100 宽时 (26+100)*140/136 = 129.7 —— 正是当年手挑的 130，说明这个式子是对的。
+    const plateWidth = isHero
+      ? ((BAR_LEFT_HERO + BAR_WIDTH_HERO) * PLATE_TEX_WIDTH) / PLATE_TEX_INNER_RIGHT
+      : (BAR_WIDTH_NONHERO * PLATE_TEX_WIDTH) / (PLATE_TEX_INNER_RIGHT - PLATE_TEX_INNER_LEFT);
+
+    // 纹理 1 像素 = 本帧多少单位。**横向凡是从纹理量出来的位置都要过这一道**，
+    // 因为两种分类的底板宽度不同，写死比例必然有一边错位（见文件头常量注释）。
+    const perTexel = plateWidth / PLATE_TEX_WIDTH;
+
+    // 三条 bar 的左起点与长度。英雄是手挑的定值，普通单位由纹理内容区换算 ——
+    // 普通单位正好铺满 x4..136，两端顶到内边框，不留缝（详见 BAR_LEFT_HERO 的注释）
+    const barLeft = (isHero ? BAR_LEFT_HERO : PLATE_TEX_INNER_LEFT * perTexel) / 2400;
+    const barWidth = (isHero ? BAR_WIDTH_HERO : (PLATE_TEX_INNER_RIGHT - PLATE_TEX_INNER_LEFT) * perTexel) / 2400;
     this.barFullWidth = barWidth;
+
+    // 血条高度。英雄写死；普通单位 = 底板高 - 内容区起始行，因为底板被裁过，
+    // 内容区只剩下面这么高。**必须与底板高度联动** —— 原先这里写死 12/1800，
+    // 底板压到 10 之后血条就从板底捅出去了 6 个单位，屏幕上就是一块没框住的厚红板。
+    const barHeightUnits = isHero ? BAR_HEIGHT_HERO : PLATE_HEIGHT_NONHERO - PLATE_TEX_CONTENT_TOP;
+    this.barHeight = barHeightUnits / 1800;
 
     //血条UI基底框架
     this.frame = Frame.createType(`UnitBloodFrame_${actor.id}_g${gen}`, Frame.fromHandle(DzGetGameUI())!, 0, "BACKDROP", "")!;
-    this.frame.setSize(130 / 2400, 28 / 1800);
+    // 普通单位窄一截（PLATE_WIDTH_NONHERO）且矮一截（PLATE_HEIGHT_NONHERO）
+    this.frame.setSize(plateWidth / 2400, plateHeight / 1800);
     this.frame.setTexture("Texture\\ui\\hpbar\\01.tga", 0, false);
+    if (!isHero) {
+      // 只取纹理上面 16/28 那一截。**必须裁、不能压** —— 压扁会把上下边框一起压细
+      DzFrameSetTexCoord(this.frame.handle, 0, 0, 1, PLATE_HEIGHT_NONHERO / PLATE_TEX_HEIGHT);
+    }
     this.frame.setVisible(true);
 
     // ## 底图里烘死的那个等级格子
@@ -180,26 +316,32 @@ export class UnitBlood {
     // 否则普通单位被左移的 bar 会被盖块压住（英雄的 bar 从 x26 起，和盖块不重叠，建哪都一样）。
     //
     // 盖块只盖 y 4..24：上下边框（纹理 y 2..3 / 24..25）不能碰，横向盖到分隔线右缘
-    // `LEVEL_BOX_BAKED_END` 为止。两种分类的左起点不同：
+    // `LEVEL_BOX_TEX_END` 换算过来的位置为止。两种分类的左起点不同：
     //   · 英雄：从 x0 起，**连左边框一起盖** —— 紧接着自建的 ② 会把左边框重画回来。
-    //   · 普通单位：从 `BAR_LEFT_NONHERO` 起，**留住左边框**（没有 ② 去重画它），
+    //   · 普通单位：从血条左端起，**留住左边框**（没有 ② 去重画它），
     //     只盖分隔线。屏幕上普通单位血条左边那个空方格，就是这条分隔线。
+    //
+    // 右缘必须过 `perTexel` 换算：分隔线在纹理第 26 个像素处，而两种分类底板宽度不同
+    // （英雄 150 / 普通单位 ~95），写死换算结果普通单位就会盖歪。
+    const levelBoxBakedEnd = LEVEL_BOX_TEX_END * perTexel;
     this.levelMaskFrame = Frame.createType(`LevelMaskFrame_${actor.id}_g${gen}`, this.frame, 0, "BACKDROP", "")!;
     this.levelMaskFrame.setTexture("Texture\\ui\\hpbar\\levelmask.tga", 0, false);
-    this.levelMaskFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, (isHero ? 0 : BAR_LEFT_NONHERO) / 2400, -4 / 1800);
-    this.levelMaskFrame.setPoint(FRAME_ALIGN_RIGHT_BOTTOM, this.frame, FRAME_ALIGN_LEFT_TOP, LEVEL_BOX_BAKED_END / 2400, -24 / 1800);
+    this.levelMaskFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, isHero ? 0 : barLeft, -PLATE_TEX_CONTENT_TOP / 1800);
+    // 下沿跟着底板走：普通单位的底板只有 10 高，盖块还盖到 24 就会垂到底板下沿之外
+    // ——那已经是「单位那侧」了，会在单位身上糊一道黑边。
+    this.levelMaskFrame.setPoint(FRAME_ALIGN_RIGHT_BOTTOM, this.frame, FRAME_ALIGN_LEFT_TOP, levelBoxBakedEnd / 2400, (isHero ? -24 : -PLATE_HEIGHT_NONHERO) / 1800);
 
     //血条生命值框架
     this.lifeFrame = Frame.createType(`LifeFrame_${actor.id}_g${gen}`, this.frame, 0, "BACKDROP", "")!;
-    this.lifeFrame.setSize(barWidth, 12 / 1800);
+    this.lifeFrame.setSize(barWidth, this.barHeight);
     this.lifeFrame.setTexture("Texture\\ui\\hpbar\\02.tga", 0, false);
-    this.lifeFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, barLeft, -4 / 1800);
+    this.lifeFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, barLeft, -PLATE_TEX_CONTENT_TOP / 1800);
 
     // 护盾值框架：与血条同位置同大小，覆盖在血条上方，只显示护盾百分比宽度，更直观
     this.shieldFrame = Frame.createType(`ShieldFrame_${actor.id}_g${gen}`, this.frame, 0, "BACKDROP", "")!;
-    this.shieldFrame.setSize(barWidth, 12 / 1800);
+    this.shieldFrame.setSize(barWidth, this.barHeight);
     this.shieldFrame.setTexture("Texture\\ui\\hpbar\\huduntiao.tga", 0, false);
-    this.shieldFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, barLeft, -4 / 1800);
+    this.shieldFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, barLeft, -PLATE_TEX_CONTENT_TOP / 1800);
     this.shieldFrame.setVisible(false);
 
     //血条魔法值框架
@@ -208,6 +350,16 @@ export class UnitBlood {
     this.manaFrame.setTexture("Texture\\ui\\hpbar\\03.tga", 0, false);
     // 向下微调，为护盾条留出空间
     this.manaFrame.setPoint(FRAME_ALIGN_LEFT_TOP, this.frame, FRAME_ALIGN_LEFT_TOP, barLeft, -18 / 1800);
+
+    // 普通单位的蓝条**不显示**：它原本待的那一格已经连同底板下半截一起砍掉了
+    // （见 PLATE_HEIGHT_NONHERO），还画的话会垂到底板下沿之外、糊到单位身上。
+    // frame 照建不毁，只是永不显示 —— `updateManaBar` 里有对应的早退。
+    //
+    // ⚠️ 这不是「暂时藏一下」：普通单位从此没有蓝条。要恢复的话，
+    // 得把底板高度还回 28 并把 PLATE_HEIGHT_NONHERO 那条路整个撤掉。
+    if (!isHero) {
+      this.manaFrame.setVisible(false);
+    }
 
     // 等级数字：**只有英雄才建**。普通单位的血条按用户要求去掉左边的等级数字。
     //
@@ -577,10 +729,15 @@ export class UnitBlood {
   private updateLifeBar(): void {
     const maxLife = this.actor.maxLife;
     const lifePercent = maxLife > 0 ? this.actor.life / maxLife : 0;
-    this.lifeFrame.setSize(this.barFullWidth * lifePercent, 12 / 1800);
+    this.lifeFrame.setSize(this.barFullWidth * lifePercent, this.barHeight);
   }
 
   private updateManaBar(): void {
+    // 普通单位没有蓝条（见构造函数），直接不碰 —— 早退写在 setSize **之前**，
+    // 否则每帧都会把一个永不显示的 frame 重新设成满宽，白跑原生调用。
+    if (!this.isHero) {
+      return;
+    }
     const maxMana = this.actor.maxMana;
     const manaPercent = maxMana > 0 ? this.actor.mana / maxMana : 0;
     this.manaFrame.setSize(this.barFullWidth * manaPercent, 8 / 1800);
@@ -604,7 +761,7 @@ export class UnitBlood {
     }
 
     const clamped = Math.max(0, Math.min(shieldPercent, 1));
-    this.shieldFrame.setSize(this.barFullWidth * clamped, 12 / 1800);
+    this.shieldFrame.setSize(this.barFullWidth * clamped, this.barHeight);
   }
 
   /**
@@ -615,7 +772,9 @@ export class UnitBlood {
     const unitX = this.actor.x;
     const unitY = this.actor.y;
 
-    const unitHeightOffset = this.actor.hpBarUIHeight * this.actor.size; // 单位高度偏移
+    // 普通单位压低一档（见 NONHERO_HEIGHT_FACTOR）。`size` 照乘，大单位仍相应更高
+    const heightFactor = this.isHero ? 1 : NONHERO_HEIGHT_FACTOR;
+    const unitHeightOffset = this.actor.hpBarUIHeight * this.actor.size * heightFactor; // 单位高度偏移
 
     // 转换为屏幕坐标（传入计算好的偏移量）
     const screenPos = worldToScreen(unitX - 30, unitY + unitHeightOffset, 0);

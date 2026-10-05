@@ -37,7 +37,6 @@
 
 import { ChatBoxUI } from "src/system/ui/ChatBoxUI";
 import { Console } from "src/system/console";
-import { ChatChannel } from "src/system/ui/chatChannel";
 import { createLogger } from "src/utils/logger";
 
 const log = createLogger("ChatBoxDemo");
@@ -69,25 +68,6 @@ export function seedChatBoxDemo(): void {
     ChatBoxUI.warn(`警告 #${i}：这条应为红色`);
     Console.say(`玩家消息 #${i}：这条应为白色（走 Console.say 直发）`, "FFFFFF", "PLAYER");
   }
-
-  // ⚠️ 临时诊断，验完连同 `MessageList.getDebugInfo()` 一起删。
-  //
-  // 上一轮那两条 3 字符探针已经证明：**`\n` 和 `|n` 引擎都认**（都是原样透传的，
-  // `wrapMessage()` 根本没碰它们）。所以换行符这条线排除了，问题变成
-  // 「我插的换行没到 frame」。
-  //
-  // 这一轮改用标记法：`MessageList` 现在在每个**由它插入的**换行后面打一个 `^`。
-  // 看面板里任意一条长消息：
-  //   换行处带 `^`            ⇒ 我的折行生效，断点是我切的
-  //   断在空格上、且没有 `^`   ⇒ 我的折行结果没到 frame，是引擎自己折的
-  //
-  // 判读不用数汉字、不用量像素，只看有没有那个符号。
-  const list = Console.getMessageList();
-  if (list) {
-    Console.say(list.getDebugInfo(), "00FFFF", ChatChannel.SYSTEM);
-  }
-  Console.say("甲\n乙", "00FFFF", ChatChannel.SYSTEM);
-  Console.say("丙|n丁", "00FFFF", ChatChannel.SYSTEM);
 
   log.info(
     `聊天框演示消息已入队 ${SEED_PER_CHANNEL * 4} 条，当前队列长度=${Console.getQueueLength()}`

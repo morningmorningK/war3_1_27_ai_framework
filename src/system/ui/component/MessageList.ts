@@ -203,18 +203,14 @@ interface WrappedText {
  * 聊天面板的尺寸是 `ChatBoxUI` 里的常量，不存在运行时改尺寸的情况。
  */
 /**
- * ⚠️ **临时诊断标记，验完删掉（连着 `\n` 一起改回 `""`）。**
+ * 行与行之间的分隔。**必须是真空串** —— 换行符 `\n` 由下面 `join()` 里那个 `"\n"` 提供。
  *
- * 折行结果到底有没有送到 frame 上，这一轮的思路是：在**每个由我插入的换行处**
- * 打一个 `^`，让它自己说话：
- *
- * - 断点处有 `^` ⇒ 我的折行生效了，断点就是我切的
- * - 断点在空格上、且**没有** `^` ⇒ 我的折行结果没到 frame，这些断点是引擎自己折的
- *
- * 用 `^` 而不是更醒目的 `»`：**标记本身不能被字体吃掉**。非 ASCII 字符在 1.27a 的
- * 默认字体里不保证有字形，渲染成空白的话，「没有标记」和「标记没画出来」就分不清了。
+ * 排查折行那几轮这里挂过一个临时标记 `^`（用来区分「我切的断点」和「引擎自己折的」）。
+ * 标记法是必要的：当时所有断点都落在空格上，光看截图分不清是谁干的，
+ * 而那正好是这个 bug 的**症状本身**。真正的根因见文件上方 `charLenAt()` 的注释 ——
+ * `charCodeAt` 在 Lua 里是 `string.byte`，汉字全被当成半角，于是我唯一的断点只剩空格。
  */
-const WRAP_MARK = "^";
+const WRAP_MARK = "";
 
 function wrapMessage(text: string, maxWidthPx: number, maxLines: number): WrappedText {
   const limit = Math.max(1, maxLines);
@@ -914,22 +910,6 @@ export class MessageList {
       visible: this.lastVisible,
       total: this.lastTotal,
     };
-  }
-
-  /**
-   * ⚠️ **临时诊断口，验完就删。**
-   *
-   * 「显示长度不对」这一轮所有推断都卡在两个数上：`area.width` 到底算出来是多少，
-   * 以及我估的字符宽度和引擎实际的差多少。截图是裁剪的，量不出来；`print` 只进控制台，
-   * 落不了盘。那就让面板自己把数报出来，比再猜一轮便宜。
-   *
-   * 刻意用字母缩写而不是全称 —— 这条消息本身也要被 `wrapMessage()` 折，
-   * 超过一行就不好读了。配套的标尺消息在 `ChatBoxTestExample` 里。
-   */
-  public getDebugInfo(): string {
-    const area = this.computeArea();
-    const info = this.getScrollInfo();
-    return `w=${area.width} h=${area.height} ml=${this.maxMessageLines} v=${info.visible}/${info.total}`;
   }
 
   /**
