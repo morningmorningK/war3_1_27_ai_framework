@@ -44,9 +44,29 @@ export class CameraControl {
    */
   private static wheelBlocker: (() => boolean) | null = null;
 
+  /**
+   * **追加式**登记的滚轮放行判定（`wheelBlocker` 之外的第二类消费者）。
+   *
+   * 槽位只有一个，而消费者不止一个：`ChatBoxUI` 已经占了 `wheelBlocker`，
+   * 属性面板若也用 `setWheelBlocker`，就会**把它整个顶掉** —— 表现是
+   * 「在聊天框上滚，镜头又跟着动了」，而且这种回归极难归因（两边代码都没错）。
+   *
+   * 所以后来的消费者一律走 `addWheelBlocker` 追加，谁都不动谁。
+   * 语义是**或**：任何一个判定说「这一格归我」，镜头就不缩放。
+   */
+  private static extraWheelBlockers: Array<() => boolean> = [];
+
   /** 登记滚轮放行判定。传 `null` 取消。由 `ChatBoxUI` 调用 */
   public static setWheelBlocker(fn: (() => boolean) | null): void {
     CameraControl.wheelBlocker = fn;
+  }
+
+  /**
+   * 追加一个滚轮放行判定（**不影响 `wheelBlocker`**）。可多次调用，各自独立。
+   * 目前由属性面板登记。
+   */
+  public static addWheelBlocker(fn: () => boolean): void {
+    CameraControl.extraWheelBlockers.push(fn);
   }
 
 
@@ -92,6 +112,13 @@ export class CameraControl {
     // 不是这次要改的问题（顺带一提：那个条件和它上面那句注释说的是反的，
     // 但那是另一件事，没实测过就先不动）。
     if (CameraControl.wheelBlocker !== null && CameraControl.wheelBlocker()) return;
+
+    // 追加登记的判定（属性面板等）。**或**关系，任一为真即放行。
+    // 用 `push` 填的普通数组，`.length` 可靠（见记忆 `wc3-tstl-sparse-array-length`）。
+    for (let i = 0; i < CameraControl.extraWheelBlockers.length; i++) {
+      const blocker = CameraControl.extraWheelBlockers[i];
+      if (blocker !== undefined && blocker()) return;
+    }
 
     // 标记需要重置镜头属性
     this.resetCam = true;

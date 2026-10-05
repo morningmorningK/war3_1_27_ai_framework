@@ -1,0 +1,234 @@
+/**
+ * 伤害上下文 —— 一次伤害结算的**全部输入与中间产物**。
+ *
+ * ## 为什么另起一个类型，而不扩张 `UnitDamageEventData`
+ *
+ * `UnitDamageEventData` 是**原生事件的直接投影**，它的 `setEventDamage` 是一次真实的引擎副作用；
+ * 而且它已经是 `ShieldSystem(10)` 和 `DamageNumberDisplay(0)` 的公共契约。
+ * 动它 = 同时动两个既有订阅者。
+ *
+ * 所以分成两层：事件数据保持我原样不动，结算上下文是**我们自己的一张草稿纸**。
+ *
+ * ## 原生元数据是**易失**的
+ *
+ * `EXGetEventDamageData` / `GetEventDamage()` 只在**伤害回调那一次栈帧内**有效，
+ * 出了回调就读不到。所以这些东西在 `captureDamageContext()` 里**一次性抄完**，
+ * 之后随便异步用，都是这张草稿纸上的死数据。
+ *
+ * 反过来说：**不要**把 `DamageContext` 存起来、之后再去补读原生字段 —— 那时候读不到了。
+ */
+
+import { Actor } from "src/system/actor";
+import { ElementId } from "src/system/stat";
+import { UnitDamageEventData } from "src/system/event/GameEvent";
+import { DAMAGE_TYPE_NORMAL_INDEX } from "./damageConstants";
+
+/** 一段伤害的来源。用于事后归因（「这一发是谁打的」），不影响结算 */
+export type HitSource = "native" | "relic" | "reaction";
+
+/**
+ * 一次命中。**一段伤害就是一条 `DamageHit`**，元素伤害与物理伤害各占一条。
+ *
+ * 用数组积攒而不是几个固定字段：本轮只有「物理 + 一条元素」，
+ * 但元素反应（§2.2 的 D 阶段）会一次结算出好几段，形状现在就得能装下。
+ */
+export interface DamageHit {
+  /** 哪个元素 */
+  element: ElementId;
+  /** 结算前的基数 */
+  base: number;
+  /**
+   * 走完全部乘区之后的量。
+   *
+   * ⚠️ **是浮点，没有取整** —— 管线全程用浮点，取整是 `DamageNumberDisplay` 的展示问题。
+   * 理由见 `DamagePipeline.ts` 文件头（不取整才能让 `ARMOR_PEN = 0` 时物理段逐位等于原生值）。
+   * `ElementalDamage.deal()` 那个取整版是给数值自测与展示用的，**管线用的是 `dealRaw()`**。
+   */
+  amount: number;
+  isCrit: boolean;
+  source: HitSource;
+}
+
+/**
+ * 遗物往本次命中里**追加伤害**的口子。
+ *
+ * ## 为什么不干脆让遗物直接 `ctx.hits.push(...)`
+ *
+ *   1. **遗物只说「加什么」，不说「加多少」。** 元素加成、暴击率、暴击伤害、
+ *      目标抗性、全局免伤这些乘区由管线统一结算。放给每个遗物自己算，
+ *      等于每写一件遗物就要抄一遍公式 —— 抄错一处就是**静默的错数**，
+ *      不会崩、不会报错，只在某天有人发现「怎么打不死人」。
+ *   2. `hits` 里每条的 `amount` 是**已走完乘区**的值，`isCrit` 也是定局。
+ *      让遗物直接写，等于把这套内部结构变成公共契约，以后改不动。
+ *   3. D 阶段的元素反应要追加「剧变」段（不吃加成、不暴击），那时加一个
+ *      `addTransform()` 即可 —— 遗物那边的调用点一行都不用动。
+ */
+export interface DamageDealer {
+  /**
+   * 追加一段元素伤害。
+   *
+   * @param element 元素
+   * @param base    **乘区之前的基数**。「+15 火伤」就传 `15` ——
+   *                火伤加成 / 暴击 / 目标火抗 / 免伤会自动叠上去。
+   *                不传 `deal()` 算好的结果，理由见上面第 1 条。
+   * @param canCrit 能不能暴击，**默认能**。剧变反应传 `false`（它不吃暴击）
+   */
+  add(element: ElementId, base: number, canCrit?: boolean): void;
+}
+
+/**
+ * 元素反应类别。**本轮恒 `"none"`** —— 只留接口，反应本身属 D 阶段。
+ *
+ * - `amplify`（增幅：蒸发 / 融化）—— 加成、暴击、擢升**全生效**，再乘反应倍率
+ * - `transform`（剧变：超载 / 感电 / 超导…）—— **不乘**加成、**不暴击**、不受擢升，
+ *   只由 `f(等级, 元素精通)` 定
+ *
+ * 这两条的差别是公式级的分叉，所以形状现在就分开，免得 D 阶段回头改所有调用点。
+ */
+export type ReactionKind = "none" | "amplify" | "transform";
+
+export interface DamageContext {
+  target: Actor | undefined;
+  source: Actor | undefined;
+  unitTypeId: number;
+  owner: player;
+
+  /** 引擎在事件里报的值。**已经算完护甲减伤**（实测：护甲 2 → 89.2857） */
+  originalDamage: number;
+  /** 进入管线那一刻 `GetEventDamage()` 的最新值。Step 3 打开接管后它才是「待覆盖的原值」 */
+  nativeDamage: number;
+
+  /**
+   * 是否物理。**由 `damageType === 4` 推出，不是读 `(1) IS_PHYSICAL`** ——
+   * 后者实测在平A 时也给 0（见 `damageConstants.ts` 与 memory `wc3-damage-event-semantics`）。
+   */
+  isPhysical: boolean;
+  /** 是否普通攻击（`(2)` 槽位，实测可用：平A=1、技能=0） */
+  isAttack: boolean;
+  /** 是否远程（`(3)`） */
+  isRanged: boolean;
+  /** `(6)` 原样回传的攻击类型索引 */
+  attackType: number;
+  /** `(4)` 原样回传的伤害类型索引 */
+  damageType: number;
+  /** `(5)` 武器类型索引 */
+  weaponType: number;
+
+  /** 各段命中。**只准 `push`**，禁 `for-of` / `filter`（带洞数组陷阱） */
+  hits: DamageHit[];
+  /** 本次是否有任意一段暴击 */
+  isCrit: boolean;
+  reactionKind: ReactionKind;
+  /** 最终写回引擎的值 */
+  finalDamage: number;
+}
+
+/**
+ * 从原生事件一次性抄下全部易失元数据。
+ *
+ * ⚠️ **必须在伤害回调的同步执行路径上调用** —— 内部那七个 `EXGetEventDamageData`
+ * 出了回调就是废数。
+ */
+export function captureDamageContext(data: UnitDamageEventData): DamageContext {
+  const damageType = EXGetEventDamageData(4);
+  const attackType = EXGetEventDamageData(6);
+  const weaponType = EXGetEventDamageData(5);
+  // Step 1 里 data.attackType/damageType 已经被 damage.ts 填上了，这里仍自己读一遍：
+  // 上下文要的七个槽位里有三个（2/3/5）事件数据根本没带，与其一半读 data 一半读原生，
+  // 不如七个数一次全从同一个地方取，读起来不会有"这两行为什么不一样"的疑问。
+  const isAttack = EXGetEventDamageData(2) === 1;
+  const isRanged = EXGetEventDamageData(3) === 1;
+  const nativeDamage = GetEventDamage();
+
+  return {
+    target: data.Actor,
+    source: data.source,
+    unitTypeId: data.unitTypeId,
+    owner: data.owner,
+
+    originalDamage: data.originalDamage,
+    nativeDamage,
+
+    // 判物理用 damageType === 4；`(1) IS_PHYSICAL` 实测平A 也给 0，不可信
+    isPhysical: damageType === DAMAGE_TYPE_NORMAL_INDEX,
+    isAttack,
+    isRanged,
+    attackType,
+    damageType,
+    weaponType,
+
+    // 密集数组，push 生成
+    hits: [],
+    isCrit: false,
+    reactionKind: "none",
+    finalDamage: nativeDamage,
+  };
+}
+
+/** 把 `hits` 里各段加起来。Step 2 起由 `ElementalDamage` 与管线共同使用 */
+export function sumHits(ctx: DamageContext): number {
+  let total = 0;
+  for (let i = 0; i < ctx.hits.length; i++) {
+    const h = ctx.hits[i];
+    if (h !== undefined) {
+      total += h.amount;
+    }
+  }
+  return total;
+}
+
+// ===========================================================================
+// 上下文交接槽位
+// ===========================================================================
+
+/**
+ * 「最近一次伤害的上下文」。**存成 `(data, ctx)` 一对，不是裸的 `ctx`。**
+ *
+ * ## 为什么要这个槽位
+ *
+ * 上下文是 `DamagePipeline` 在**优先级 100** 造的，而唯一的消费者
+ * `DamageNumberDisplay` 在**优先级 0** —— 中间隔着 `ShieldSystem(10)`。
+ * 两者之间没有任何数据通道：`UnitDamageEventData` 是原生事件的投影，
+ * 按设计**不许**装我们自己的东西（见文件头）。所以在这儿开一个交接点。
+ *
+ * ## 为什么必须带 `data` 做身份校验
+ *
+ * 伤害回调**会重入** —— 探针实测在回调里调 `UnitDamageTarget` 能嵌套到 4 层。
+ * 裸变量的失败是**静默**的：内层派发把槽位覆写成内层的 ctx，内层跑完返回外层，
+ * 外层的 `ShieldSystem` 与飘字读到的却是**内层的上下文**，飘出别人的数。
+ *
+ * 每次派发的 `UnitDamageEventData` 都是**新对象**（`damage.ts:68` 现场 `new`，
+ * 之后 `emit` 把同一个对象发给所有订阅者），所以比对 `data` 是不是同一个对象
+ * 就够判定了：重入时外层拿回 `undefined`，飘字退回单色 —— 是**降级**，不是错数。
+ *
+ * ## 为什么不用 `Map<data, ctx>` 连这点降级也消掉
+ *
+ * 那样就得决定「什么时候删」，而**三个时点全都不行**：
+ * 100 层不能删（0 层还没读）、0 层不能删（飘字没开的时候根本没人来读）、
+ * 定时清理又意味着要在这个每发伤害都跑的热路径上挂个定时器。
+ * 每发伤害漏一条 = 永久泄漏。单槽位 + 身份校验没有生命周期问题：**内存恒为一条**。
+ */
+let lastDamageContext: { data: UnitDamageEventData; ctx: DamageContext } | undefined =
+  undefined;
+
+/** 由 `DamagePipeline` 在 100 层里记下本次伤害的上下文。 */
+export function rememberDamageContext(
+  data: UnitDamageEventData,
+  ctx: DamageContext
+): void {
+  lastDamageContext = { data: data, ctx: ctx };
+}
+
+/**
+ * 取本次伤害的上下文。**只对同一次派发有效** —— 传进来的 `data` 不是
+ * 槽位里记着的那一个（重入、或压根不是伤害派发）就返回 `undefined`。
+ *
+ * 返回 `undefined` 是**正常路径**，不是错误：调用方应当退回单一颜色的显示方式。
+ */
+export function findDamageContext(data: UnitDamageEventData): DamageContext | undefined {
+  const slot = lastDamageContext;
+  if (slot === undefined || slot.data !== data) {
+    return undefined;
+  }
+  return slot.ctx;
+}

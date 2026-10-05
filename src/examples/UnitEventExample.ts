@@ -47,12 +47,13 @@ export function rgeisterUnitSpellEffectEvent(): void {
   // `UnitBlood.create` 自己会返回 undefined、不建条（见那边的注释）。
   // 「关着的时候新造的单位不会凭空长出条」正是要验的行为之一，所以不能绕过这条路径。
   //
-  // 位置往北错开 350，免得和 (0,0) 上那 50 个英雄的堆叠糊在一起看不出效果。
   for (let i = 0; i < 6; i++) {
     const unit = Actor.create(Players[3], FourCC("hfoo"), -300 + i * 120, 350);
     if (unit == null) continue;
     unit.setPreselectUIVisible(false);
     unit.createBloodBar();
+    unit.maxLife = 1000;
+    unit.life = 1000;
     unit.maxMana = 1000
     unit.mana = 1000;
     // 同上：步兵不是英雄，`getDisplayName()` 取单位名 —— 这里会显示「步兵」

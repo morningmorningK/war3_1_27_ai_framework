@@ -177,8 +177,11 @@ export type GameEventHandler<T = any> = EventHandler<T>;
 /**
  * 辅助函数：为所有玩家注册单位事件
  * 模拟 TriggerRegisterAnyUnitEventBJ
+ *
+ * **导出**是给自带触发器的模块用的（如 `ItemRelicBridge`）。它只是登记触发器，
+ * 不碰本文件的派发语义 —— 把那两行循环抄一份出去，早晚会有一份被改歪。
  */
-function registerAnyUnitEvent(trig: trigger, event: playerunitevent): void {
+export function registerAnyUnitEvent(trig: trigger, event: playerunitevent): void {
   for (let i = 0; i < bj_MAX_PLAYER_SLOTS; i++) {
     TriggerRegisterPlayerUnitEvent(trig, Player(i), event, null);
   }

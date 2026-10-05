@@ -1,31 +1,14 @@
 import { UNIT_TYPE_HERO } from "src/constants/game/units";
 import { FourCC } from "src/utils/helper";
 import { Actor } from "src/system/actor";
+import { StatMod, StatModKind, StatType } from "src/system/stat/types";
 import { RelicDefinition } from "../types";
-
-/** Common.j 原生英雄力量接口（在部分环境下比 Blizzard.j 包装更稳） */
-declare function GetHeroStr(whichHero: unit, includeBonuses: boolean): number;
-declare function SetHeroStr(
-  whichHero: unit,
-  newStr: number,
-  permanent: boolean
-): void;
 
 /** 物品类「攻击伤害加成」技能（默认数据一般为每级 +1 伤害，具体以物编为准） */
 const AB_ITEM_DAMAGE_BONUS = FourCC("AIat");
 
 function isHero(u: unit): boolean {
   return IsUnitType(u, UNIT_TYPE_HERO);
-}
-
-function addHeroStrength(u: unit, delta: number): void {
-  const current = GetHeroStr(u, false);
-  SetHeroStr(u, current + delta, true);
-}
-
-function removeHeroStrength(u: unit, delta: number): void {
-  const current = GetHeroStr(u, false);
-  SetHeroStr(u, math.max(1, current - delta), true);
 }
 
 /** +攻击力遗物：对英雄使用 +5 力量（近战主属性英雄每点力量 +1 近战攻击）；非英雄则叠物品加攻技能 */
@@ -38,22 +21,33 @@ export const warFangDefinition: RelicDefinition = {
   icon: "ReplaceableTextures\\CommandButtons\\BTNClawsOfAttack.blp",
   rarity: "rare",
   maxStacks: 1,
+  /**
+   * **英雄**走属性加成：力量 +5（每层）。写回原生由 `StatSheet.writeNative` 的
+   * `STRENGTH` 分支做 `SetHeroStr`，等价于迁移前的 `addHeroStrength`。
+   *
+   * **非英雄返回空数组** —— 它们没有三围，走下面的加技能分支。返回空数组时
+   * `RelicSystem` 会摘掉可能残留的旧来源，所以这个分支是安全的。
+   */
+  getStatModifiers(actor: Actor, stacks: number): StatMod[] {
+    if (!isHero(actor.handle)) return [];
+    return [
+      {
+        stat: StatType.STRENGTH,
+        kind: StatModKind.FLAT,
+        value: WAR_FANG_ATTACK_BONUS * stacks,
+      },
+    ];
+  },
   onAcquire(actor: Actor): void {
-    const u = actor.handle;
-    if (isHero(u)) {
-      addHeroStrength(u, WAR_FANG_ATTACK_BONUS);
-      return;
-    }
+    // 英雄的加成已由 getStatModifiers 提供，这里只管非英雄那条路
+    if (isHero(actor.handle)) return;
     actor.addAbility(AB_ITEM_DAMAGE_BONUS);
     actor.setAbilityLevel(AB_ITEM_DAMAGE_BONUS, WAR_FANG_ATTACK_BONUS);
   },
-  onRemove(actor: Actor, stacks: number): void {
-    const u = actor.handle;
-    const n = WAR_FANG_ATTACK_BONUS * stacks;
-    if (isHero(u)) {
-      removeHeroStrength(u, n);
-      return;
-    }
+  onRemove(actor: Actor, _stacks: number): void {
+    // **加技能不是属性**，属性系统管不着，所以非英雄这条仍需手写反向代码。
+    // 英雄那条不用管：来源一摘，力量自动回到 base（迁移前是 removeHeroStrength）。
+    if (isHero(actor.handle)) return;
     actor.removeAbility(AB_ITEM_DAMAGE_BONUS);
   },
 };

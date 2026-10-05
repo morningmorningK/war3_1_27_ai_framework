@@ -3,6 +3,7 @@ import { UnitBlood } from "./ui/component/UnitBlood";
 import { BuffManager } from "./buff/BuffManager";
 import { BUFF_DURATION_PERMANENT } from "./buff/types";
 import { eventBus } from "./event/EventBus";
+import { StatSheet } from "./stat/StatSheet";
 
 // TSTL/Lua 全局：用于把缓存的 Unit 实例“升级”为 Actor（修复方法为 nil 的问题）
 declare const setmetatable: (t: unknown, mt: unknown) => unknown;
@@ -13,6 +14,7 @@ export class Actor extends Unit {
   private _hpBarUIHeight: number = 100;
   private _size: number = 1.0;
   private _buffManager: BuffManager | null = null;
+  private _statSheet: StatSheet | null = null;
   private label = "";
   private bloodBarUI: UnitBlood | null = null;
 
@@ -40,6 +42,7 @@ export class Actor extends Unit {
     if (f["_hpBarUIHeight"] === undefined) f["_hpBarUIHeight"] = 100;
     if (f["_size"] === undefined) f["_size"] = 1.0;
     if (f["_buffManager"] === undefined) f["_buffManager"] = null;
+    if (f["_statSheet"] === undefined) f["_statSheet"] = null;
     if (f["label"] === undefined) f["label"] = "";
     if (f["bloodBarUI"] === undefined) f["bloodBarUI"] = null;
   }
@@ -141,6 +144,13 @@ export class Actor extends Unit {
       this._buffManager.clearAll();
       this._buffManager = null;
     }
+    // **顺序**：先 clearAll（buff 会顺手摘掉自己挂的属性来源），再 dispose 属性表。
+    // dispose 里还会把表从 `StatSystem` 的脏集合摘掉 —— 死亡单位不能被下一次冲刷
+    // 碰到悬垂句柄。
+    if (this._statSheet !== null) {
+      this._statSheet.dispose();
+      this._statSheet = null;
+    }
     UnitBlood.remove(this);
     this.bloodBarUI = null;
     delete Actor.allActors[this.id];
@@ -180,6 +190,29 @@ export class Actor extends Unit {
 
   public hasBuffManager(): boolean {
     return this._buffManager !== null;
+  }
+
+  /**
+   * 属性真值表。**惰性建表** —— 第一次访问时 new 一张，并从原生快照一次 base。
+   *
+   * 惰性而不是在构造函数里建：`Actor` 有一大半是「父类 `Unit` 实例升级而来」
+   * （见 `ensureActorFields`），构造函数根本不会执行；而且绝大多数单位
+   * 直到被打死也用不上属性表，提前建 43 项 × 3 个数组是白花的。
+   *
+   * 快照只做一次。之后 `base` 绝不回读原生 —— 否则写回 final 会污染 base，
+   * 每次重算翻倍（见 `StatSheet` 文件头边界 2）。
+   */
+  public get statSheet(): StatSheet {
+    if (this._statSheet === null) {
+      const sheet = new StatSheet(this);
+      sheet.snapshotBaseFromNative();
+      this._statSheet = sheet;
+    }
+    return this._statSheet;
+  }
+
+  public hasStatSheet(): boolean {
+    return this._statSheet !== null;
   }
 
   /** 当前护盾总量（所有护盾 buff 的 current 之和） */

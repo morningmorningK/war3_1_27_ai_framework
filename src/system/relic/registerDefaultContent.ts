@@ -2,6 +2,7 @@ import { burningBloodDefinition } from "./definitions/burningBlood";
 import { warFangDefinition } from "./definitions/warFang";
 import { ironPlateDefinition } from "./definitions/ironPlate";
 import { arcaneGrimoireDefinition } from "./definitions/arcaneGrimoireWater";
+import { elementalEmberDefinition } from "./definitions/elementalEmber";
 import { RelicSystem } from "./RelicSystem";
 
 /**
@@ -14,12 +15,14 @@ export function registerDefaultRelicsAndPools(): void {
     warFangDefinition,
     ironPlateDefinition,
     arcaneGrimoireDefinition,
+    elementalEmberDefinition,
   ]);
   rs.registerPool("common", [
     { id: "burning_blood", weight: 1 },
     { id: "war_fang", weight: 1 },
     { id: "iron_plate", weight: 1 },
     { id: "arcane_grimoire_water", weight: 1 },
+    { id: "elemental_ember", weight: 1 },
   ]);
   rs.bindDeathCleanup();
 }

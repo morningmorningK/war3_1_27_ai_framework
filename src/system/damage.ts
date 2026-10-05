@@ -55,12 +55,24 @@ export default class DamageSystem {
       const damageSource = GetEventDamageSource();
       const rawDamage = GetEventDamage();
 
+      // 后两个参数（attackType / damageType）此前**从来没被传过**，恒为 undefined。
+      // 它们走的是 `EXGetEventDamageData` 的那七个槽位，实测有效：
+      //   (6) ATTACK_TYPE 与 (4) DAMAGE_TYPE 都是**原样回传**（传 `ATTACK_TYPE_NORMAL()`
+      //   即 `ConvertAttackType(0)`，(6) 读回来就是 0）。
+      //
+      // ⚠️ 这两个数**只在这一条同步调用链上有意义** —— `EXGetEventDamageData` 是
+      // 「当前事件」上下文，出了这个触发器动作就读不到。所以必须在这里读、在这里存。
+      //
+      // 注意别顺手把 `(1) IS_PHYSICAL` 也当成可用值：实测它在平A 时也返回 0。
+      // 判物理要用 `damageType === 4`，见 `src/system/combat/damageConstants.ts`。
       const data = new UnitDamageEventData(
         Actor.fromHandle(damagedUnit),
         GetUnitTypeId(damagedUnit),
         GetOwningPlayer(damagedUnit),
         Actor.fromHandle(damageSource),
-        rawDamage
+        rawDamage,
+        EXGetEventDamageData(6),
+        EXGetEventDamageData(4)
       );
 
       gameEvents.emit(GameEventType.UNIT_DAMAGED, data);

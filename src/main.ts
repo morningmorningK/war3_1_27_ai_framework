@@ -12,6 +12,7 @@ import SummoningSystem from "./system/SummoningSystem";
 import { UnitBlood } from "./system/ui/component/UnitBlood";
 import { NativeUISystem } from "./system/ui/gameui";
 import { registerDefaultRelicsAndPools } from "./system/relic";
+import { initItemRelicBridge } from "./system/item/ItemRelicBridge";
 import { BuffBarUI } from "./system/ui/component/BuffBarUI";
 import { CommandCardCooldownUI } from "./system/ui/component/CommandCardCooldownUI";
 import { RelicBarUI } from "./system/ui/component/RelicBarUI";
@@ -27,6 +28,12 @@ import { createLogger } from "./utils/logger";
 import { rgeisterUnitSpellEffectEvent } from "./examples/UnitEventExample";
 import { asyncSelfTest } from "./test/AsyncTestExample";
 import { seedChatBoxDemo } from "./test/ChatBoxTestExample";
+import { statSelfTest } from "./test/StatSystemTestExample";
+import { statPanelSelfTest } from "./test/StatPanelTestExample";
+import { elementalDamageSelfTest } from "./test/ElementalDamageTestExample";
+import { StatSystem } from "./system/stat";
+import { DamagePipeline } from "./system/combat";
+import { StatPanelUI } from "./system/ui/component/StatPanelUI";
 import { ChatBoxUI } from "./system/ui/ChatBoxUI";
 // TODO(阶段1): 探针验证完毕后删除此行与 initialize() 里的调用
 import { runNativeUIProbe } from "./test/NativeUIProbe";
@@ -102,10 +109,46 @@ function main(): void {
   Timer.create().start(0.01, false, () => {
     rgeisterUnitSpellEffectEvent();
     // 必须在上一行之后：那一行才同步造出全部单位，早了 Actor.allActors 里是空的
-    seedBuffBarDemo();
-    asyncSelfTest();
+    // seedBuffBarDemo(); 测试buff
+    // asyncSelfTest();  测试异步
     seedChatBoxDemo();
+    // 属性系统地基的自测（纯计算内核，不碰引擎、不需要单位，放哪都行）。
+    // 放在这个 0.01s 回调里是为了和上面几项一起只在 debug 模式下跑。
+    statSelfTest();
+
+    // 元素伤害公式的自测（阶段 B / Step 2）。同样是纯计算，不碰引擎、不需要单位。
+    // **用 try/catch 单独包** —— 它和 `statSelfTest` 没有依赖关系，
+    // 一个抛了不该让另一个不跑。
+    try {
+      elementalDamageSelfTest();
+    } catch (e) {
+      log.error(`元素伤害公式自测抛出异常，已隔离：${e}`);
+    }
+
+    // 阶段 B 的伤害探针（`src/test/DamageProbe.ts`）已于 Step 6 验收通过后删除。
+    // 它验过的口径都记在 memory `wc3-damage-event-semantics` 里；P6/P7/P8 三段
+    // 的结论（接管后写回值不被二次削甲、遗物钩子、真物品拾取/丢弃）分别对应
+    // `DamagePipeline` 的 Step 3/5/6。要重跑得把那个文件从 git 历史里捞回来。
   });
+
+  // 属性面板的自测（阶段 E / Step 3）。
+  //
+  // ⚠️ **不能和上面那批挤在 0.01s** —— 它要挑一个真实的 `Actor` 来读原生，
+  // 而 `rgeisterUnitSpellEffectEvent()` 虽然同步造出了单位，那些单位却是
+  // 在那一次 `Timer.create().start(0.01, ...)` 回调里才建出来的；
+  // 更重要的是**同一批 `BuffManager` 挂上去的属性来源还没被冲刷拍写回原生**。
+  // 等 1.5s（跨过 0.1s 冲刷拍的十几轮）再测，读到的是稳定态。
+  //
+  // 包 try/catch 的理由同 `initialize()` 里那几处：这个回调里抛出去，
+  // 后面……没有后面了，但异常冒泡到定时器回调里同样是脏的。
+  Timer.create().start(1.5, false, () => {
+    try {
+      statPanelSelfTest();
+    } catch (e) {
+      log.error(`属性面板自测抛出异常，已隔离：${e}`);
+    }
+  });
+
 }
 
 /**
@@ -131,6 +174,17 @@ export function initialize(): void {
   }
 
   registerDefaultRelicsAndPools();
+
+  // 物品↔遗物桥（阶段 B / Step 6）。**必须排在 `registerDefaultRelicsAndPools()` 之后** ——
+  // 它俩没有初始化顺序上的硬依赖（拾取是运行时才发生），但定义先注册好、
+  // 触发器再开，读起来「能查到的一定存在」，不用去想中间那一瞬间。
+  // 包 try/catch 的理由同下面几处：这里抛出去后面所有 system 的 init 都不会执行。
+  try {
+    initItemRelicBridge();
+  } catch (e) {
+    log.error(`initItemRelicBridge() 抛出异常，已隔离：${e}`);
+  }
+
   RelicBarUI.getInstance().create();
   BuffBarUI.getInstance().create();
 
@@ -208,6 +262,46 @@ export function initialize(): void {
   DamageSystem.getInstance().initialize();
   BuffSystem.getInstance().init();
   ShieldSystem.getInstance().init();
+
+  // 伤害接管层（阶段 B / Step 1）。**位置必须在 `DamageSystem.initialize()` 之后** ——
+  // 原生 `EVENT_UNIT_DAMAGED` 触发器由那里按单位注册，它还没跑起来时挂在这里收不到事件。
+  //
+  // 与 `ShieldSystem.init()` 的先后**不影响执行顺序**：同一次派发里谁先跑由
+  // priority 决定（管线 100、护盾 10），跟注册顺序无关。排在这里只是因为读起来因果清楚。
+  //
+  // 包 try/catch 的理由同下面几处：bootstrap.lua 调 main.initialize() 时没有 pcall，
+  // 这里抛出去后面所有语句都不会执行。
+  try {
+    DamagePipeline.getInstance().initialize();
+  } catch (e) {
+    log.error(`DamagePipeline.initialize() 抛出异常，已隔离：${e}`);
+  }
+
+  // 属性系统的冲刷器：按 0.1s 一拍把脏掉的属性表写回原生。
+  // **位置在 `BuffSystem.init()` 之后** —— buff 往属性表挂修正器，那些 `setSource`
+  // 只标脏，真正落到原生是这里的事。两者节拍相同（0.1s），最坏差一拍。
+  // 包 try/catch 的理由同上面几处：bootstrap.lua 调 main.initialize() 时没有 pcall，
+  // 这里抛出去后面所有语句都不会执行。
+  try {
+    StatSystem.getInstance().init();
+  } catch (e) {
+    log.error(`StatSystem.init() 抛出异常，属性不会写回原生：${e}`);
+  }
+
+  // 属性面板（阶段 E）。**位置在 `StatSystem.init()` 之后** —— 面板要读
+  // `actor.statSheet.getFinal(...)`，虽然表的建立是惰性的（`Actor.statSheet` getter），
+  // 但冲刷器得先活着，读到的才是被刷新过的值。
+  //
+  // 它自己会在 `create()` 里接上 C 键，并把「能被 ESC 关掉」登记进 `EscapeRouter`
+  // —— ESC 的全局触发器由那一个模块单点注册，这里不需要再做什么。
+  //
+  // 包 try/catch 的理由同上面几处：bootstrap.lua 调 main.initialize() 时没有 pcall，
+  // 这里抛出去后面所有语句都不会执行。
+  try {
+    StatPanelUI.getInstance().create();
+  } catch (e) {
+    log.error(`StatPanelUI.create() 抛出异常，已隔离：${e}`);
+  }
 
   // 伤害飘字。**位置在 `ShieldSystem.init()` 之后** —— 只是读起来因果清楚
   // （「先扣护盾、再飘字」），实际先后由事件优先级决定，与登记顺序无关：

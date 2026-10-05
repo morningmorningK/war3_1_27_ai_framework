@@ -659,7 +659,26 @@ export class ChatBoxUI {
     track.setTexture(TRACK_TEXTURE);
     ChatBoxUI.liftButton(track, PRIORITY_TRACK);
 
-    const thumb = Button.createWithPreset("", TRACK_X, TRACK_Y, "SMALL", ScreenCoordinates.ORIGIN_TOP_LEFT);
+    // ⚠️ **把手认轨道当爹**（第 6 个参数是 parent，不传就挂在 `DzGetGameUI()` 下）。
+    // 这是属性面板那次定位换来的结论，两处构造完全同形：轨道和把手**同父节点**、
+    // 同为「先建轨道、后建把手」—— 结果**轨道把手整个盖住**（面板那边藏掉轨道后
+    // 把手立刻出现，见 `StatPanelUI.createScrollBar` 的说明）。
+    //
+    // 子节点永远画在父节点之上，是结构性的，与 priority 语义无关 —— 那边试过
+    // 改 priority 数字，方向、是否生效几条假设互相矛盾，赌错就是一轮返工。
+    //
+    // 位置不受影响：把手自己走 `setAbsPoint`（绝对屏幕坐标），父子关系只改画序；
+    // 而且 `syncThumb` 里 `thumbVisible` 本来就蕴含 `trackVisible`，藏轨道时
+    // 把手本来就该一起藏，没有行为变化。
+    const trackChrome = track.getBackdropFrame();
+    const thumb = Button.createWithPreset(
+      "",
+      TRACK_X,
+      TRACK_Y,
+      "SMALL",
+      ScreenCoordinates.ORIGIN_TOP_LEFT,
+      trackChrome === null ? undefined : trackChrome
+    );
     thumb.setSize(TRACK_WIDTH, THUMB_MIN_HEIGHT);
     thumb.setTexturePreset(THUMB_TEXTURE_PRESET);
     ChatBoxUI.liftButton(thumb, PRIORITY_THUMB);
