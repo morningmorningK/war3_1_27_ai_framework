@@ -135,12 +135,18 @@ export function statPanelSelfTest(): void {
     { label: "护甲", expect: r(GetUnitState(u, UNIT_STATE_DEFEND_WHITE)) },
     { label: "移动速度", expect: r(GetUnitMoveSpeed(u)) },
 
-    // ---- 页面③ 打头三项：纯 TS 侧、没有原生读法 ----
+    // ---- 攻速：**还没接进属性表**，是全场唯一的一项 ----
     // 没表的单位上**必须是 `—`**，显示成 `0` 会被读成「每秒攻击 0 次」
-    // （见 StatPanelUI 的 `tsOnlyText`）。
+    // （见 StatPanelUI 的 `tsOnlyText`；写回通道其实已经验证过了，只是要先治理漂移）。
     { label: "攻击速度", expect: DASH },
-    { label: "生命回复", expect: DASH },
-    { label: "魔法回复", expect: DASH },
+
+    // ---- 每秒回复两项：**任何单位都直读 JAPI 原生**（绕开属性表）----
+    // 2026-10-06 之前这里也期望 `—`（当时以为没有原生读法），后来又一度走 `pick`
+    // （有表就用表的值）。现在固定直读原生 —— 原生读的是**总回复**（物品 / 能力
+    // 加的那份也累加在同一个字段里），而表的 base 是建表时的冻结快照。
+    // 期望值这边独立再调一次原生，和面板的 `regenText` 各写各的。
+    { label: "生命回复", expect: DzGetUnitLifeRegen(u).toFixed(2) },
+    { label: "魔法回复", expect: DzGetUnitManaRegen(u).toFixed(2) },
 
     // ---- 页面②③ 的系数类：**没表时显示 `+0.0%`，不是 `—`** ----
     // 理由见 `sheetNumber` 那段：这些属性引擎压根不认识，没表 ⟺ 一条来源都没有 ⟺ 确实是 0。
@@ -236,8 +242,8 @@ function expectedRemaining(u: unit, hero: boolean): string {
 /**
  * 按标签从面板的**全部三页**行表里取一条。找不到返回 `undefined`。
  *
- * ⚠️ 用 `ALL_ROWS` 而不是 `BASIC_ROWS` —— 页面②③ 也有行，
- * 而且「攻击速度」在 Step 5 挪去了页面③，只查基础页会查不到。
+ * ⚠️ 用 `ALL_ROWS` 而不是 `BASIC_ROWS` —— 页面②③ 也有要查的行
+ * （「暴击率」「草元素抗性」这些系数类只在页面②③），只查基础页会查不到。
  */
 function findRow(label: string): (typeof ALL_ROWS)[number] | undefined {
   for (let i = 0; i < ALL_ROWS.length; i++) {

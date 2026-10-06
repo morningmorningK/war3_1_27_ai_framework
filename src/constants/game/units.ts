@@ -29,10 +29,20 @@ export const UNIT_STATE_ATTACK_WHITE = ConvertUnitState(0x12); // 白字基础�
 export const UNIT_STATE_ATTACK_BONUS = ConvertUnitState(0x13); // 绿字加成攻击
 export const UNIT_STATE_DEFEND_WHITE = ConvertUnitState(0x20); // 护甲
 
-// 攻速 / 攻击间隔：v1 属性系统**不写回**这两个（见 StatSheet 的 TS-only 清单），
-// 列在这里是为了将来实测 1.27a 能否可靠写入时有现成常量可用。
-export const UNIT_STATE_ATTACK_SPACE = ConvertUnitState(0x25); // 攻击间隔
-export const UNIT_STATE_ATTACK_SPEED = ConvertUnitState(0x51); // 每秒攻击次数
+// 攻速 / 攻击间隔。**两个不是倒数关系，量纲不同**（2026-10-06 实测，
+// memory `wc3-unit-state-japi-write`）：
+//
+//   0x51 = 攻速**倍率**，1.0 = 没有任何加速。步兵读 1.000、圣骑士读 1.260
+//          （= 1 + 13 敏捷 × 0.02）。**可读可写**（`SetUnitState`），
+//          而且引擎会把敏捷增量叠在写回值之上。
+//   0x25 = **基础攻击间隔**（秒），静态值：步兵 1.350、圣骑士 2.200。
+//          写 0x51 它纹丝不动。
+//
+// 实际出手频率 = `0x51 / 0x25`。
+// ⚠️ 属性系统目前**故意不接** `ATTACK_SPEED`（快照模型会抹掉引擎那份），见
+// `stat/types.ts` 的 ⚠️ 与 `todo_next.md`。
+export const UNIT_STATE_ATTACK_SPACE = ConvertUnitState(0x25); // 基础攻击间隔（秒）
+export const UNIT_STATE_ATTACK_SPEED = ConvertUnitState(0x51); // 攻速倍率（1.0 = 100%）
 
 // 单位类型常量
 export const UNIT_TYPE_HERO = ConvertUnitType(0);

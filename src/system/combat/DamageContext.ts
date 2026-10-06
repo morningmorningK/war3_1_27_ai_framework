@@ -232,3 +232,52 @@ export function findDamageContext(data: UnitDamageEventData): DamageContext | un
   }
   return slot.ctx;
 }
+
+/**
+ * 槽位快照的**不透明句柄**。调用方只负责存下来、原样传回去，不要读它的字段。
+ *
+ * 「不透明」不是洁癖：`save` / `restore` 是**唯一**该碰这个槽位的地方，
+ * 让调用方能读字段就等于给了它第二条改槽位的路。
+ */
+export type DamageContextSlot =
+  | { data: UnitDamageEventData; ctx: DamageContext }
+  | undefined;
+
+/**
+ * 存下当前槽位。**给「在伤害回调里又要造一次伤害」的系统用**
+ * （目前只有 `FreezeShatterSystem` 的冰爆）。
+ *
+ * ## 为什么必须有这一对
+ *
+ * `findDamageContext()` 靠**比对 `data` 是不是同一个对象**判身份（见上面那段注释）。
+ * 在伤害回调里调 `UnitDamageTarget` 会**同步重入**（实测嵌套能到 4 层）：
+ *
+ *   1. 外层派发 → `DamagePipeline(100)` 记下**外层的** ctx；
+ *   2. 外层 `FreezeShatterSystem(4)` 造冰爆 → 内层派发**同步**跑完 →
+ *      内层的 `DamagePipeline` 把槽位**覆写成内层的** ctx；
+ *   3. 内层跑完返回外层，槽位里还是**内层**的 ctx ——
+ *      外层的 `DamageNumberDisplay(0)` 拿到的 `data` 与槽位里的 `data` 不是一个对象，
+ *      于是 `findDamageContext` 返回 `undefined` → **外层的飘字退化成单色**。
+ *
+ * 所以造嵌套伤害的一方要「**存 → 造 → 还原**」把槽位包起来，内外两层各拿到自己的 ctx。
+ *
+ * ## 为什么直接存引用就够
+ *
+ * `rememberDamageContext()` 是**整体赋值**一个新对象，从不原地改槽位里的字段
+ * （见上面「内存恒为一条」那段）。所以存下来的引用就是那一刻的精确快照，
+ * 不需要深拷贝。
+ *
+ * ## ⚠️ 要配对使用
+ *
+ * 中途抛异常会跳过 `restoreDamageContext()`，槽位留在**内层**的值上。
+ * 后果只是**下一次**外层飘字退化成单色（降级，不是错数），不值得为此在伤害热路径上
+ * 包一层 try/catch。但要**成对调用**，别只存不还原。
+ */
+export function saveDamageContext(): DamageContextSlot {
+  return lastDamageContext;
+}
+
+/** 把槽位还原成 `saveDamageContext()` 存下的样子。配对使用见上面的注释。 */
+export function restoreDamageContext(slot: DamageContextSlot): void {
+  lastDamageContext = slot;
+}

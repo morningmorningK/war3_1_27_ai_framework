@@ -3,6 +3,9 @@ import { warFangDefinition } from "./definitions/warFang";
 import { ironPlateDefinition } from "./definitions/ironPlate";
 import { arcaneGrimoireDefinition } from "./definitions/arcaneGrimoireWater";
 import { elementalEmberDefinition } from "./definitions/elementalEmber";
+import { timeHourglassDefinition } from "./definitions/timeHourglass";
+import { shieldAmuletDefinition } from "./definitions/shieldAmulet";
+import { tenacityCharmDefinition } from "./definitions/tenacityCharm";
 import { RelicSystem } from "./RelicSystem";
 
 /**
@@ -16,6 +19,11 @@ export function registerDefaultRelicsAndPools(): void {
     ironPlateDefinition,
     arcaneGrimoireDefinition,
     elementalEmberDefinition,
+    timeHourglassDefinition,
+    shieldAmuletDefinition,
+    // 固定物品，**不进下面的 `common` 权重池** —— 它是由 `I004` 单独绑定的，
+    // 混进随机池会让它凭空出现在掉落里。
+    tenacityCharmDefinition,
   ]);
   rs.registerPool("common", [
     { id: "burning_blood", weight: 1 },

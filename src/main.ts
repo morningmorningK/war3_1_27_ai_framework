@@ -13,6 +13,8 @@ import { UnitBlood } from "./system/ui/component/UnitBlood";
 import { NativeUISystem } from "./system/ui/gameui";
 import { registerDefaultRelicsAndPools } from "./system/relic";
 import { initItemRelicBridge } from "./system/item/ItemRelicBridge";
+import { initTestSkills } from "./system/skill/TestSkills";
+import { registerSkillBuffDisplays } from "./system/skill/SkillBuffs";
 import { BuffBarUI } from "./system/ui/component/BuffBarUI";
 import { CommandCardCooldownUI } from "./system/ui/component/CommandCardCooldownUI";
 import { RelicBarUI } from "./system/ui/component/RelicBarUI";
@@ -31,8 +33,16 @@ import { seedChatBoxDemo } from "./test/ChatBoxTestExample";
 import { statSelfTest } from "./test/StatSystemTestExample";
 import { statPanelSelfTest } from "./test/StatPanelTestExample";
 import { elementalDamageSelfTest } from "./test/ElementalDamageTestExample";
+// 攻速写回探针（`src/test/AttackSpeedProbe.ts`）**两段结论都拿到了，已停用**：
+// `0x51` 是攻速**倍率**（1.0 = 100%，不是次/秒）、`SetUnitState` 能写且持久、
+// 引擎会把敏捷**增量**叠加在写回值之上。要重跑就把它 import 回来。
+// TODO(每秒回复): 结论出来后连同这个 import 一起删
+import { regenProbe } from "./test/RegenProbe";
 import { StatSystem } from "./system/stat";
 import { DamagePipeline } from "./system/combat";
+import LifestealSystem from "./system/combat/LifestealSystem";
+import FreezeShatterSystem from "./system/combat/FreezeShatterSystem";
+import CooldownReductionSystem from "./system/skill/CooldownReductionSystem";
 import { StatPanelUI } from "./system/ui/component/StatPanelUI";
 import { ChatBoxUI } from "./system/ui/ChatBoxUI";
 // TODO(阶段1): 探针验证完毕后删除此行与 initialize() 里的调用
@@ -108,7 +118,16 @@ function main(): void {
   }
   Timer.create().start(0.01, false, () => {
     rgeisterUnitSpellEffectEvent();
-    // 必须在上一行之后：那一行才同步造出全部单位，早了 Actor.allActors 里是空的
+    // ⚠️ 测试技能的发放**全部在 `UnitEventExample` 里**（谁造的单位谁负责发），
+    // 这里不再调 `grantTestSkills()`。
+    //
+    // 那一句是「扫 `Actor.allActors`、按归属给本地玩家的单位补发」，用户口径是不要
+    // 这套全局扫描 —— 直接在那个脚本里 `grantTestSkillsTo(hero)` 就够。
+    // **函数本身留在 `TestSkills.ts` 里没删**（将来真要批量补发时还能用），
+    // 所以这里的 import 去掉了它也不会有悬空引用。
+    //
+    // 原来这里的顺序注释（「必须在上一行之后」）是给 `grantTestSkills()` 用的，
+    // 一并删掉 —— 现在这个回调里第一句就是造单位，没有依赖顺序的第二句了。
     // seedBuffBarDemo(); 测试buff
     // asyncSelfTest();  测试异步
     seedChatBoxDemo();
@@ -149,6 +168,22 @@ function main(): void {
     }
   });
 
+  // 攻速写回探针（一次性，见 `src/test/AttackSpeedProbe.ts`）。
+  //
+  // 排在上面那条之后：它要挑一个真实的 `Actor`，而单位是在 0.01s 那个回调里
+  // 才造出来的 —— 早于 1.5s 会一个都挑不到。**只是顺序，没有依赖**，包 try/catch。
+  // 每秒回复探针（一次性，见 `src/test/RegenProbe.ts`）。
+  //
+  // 攻速探针已停用（结论见上面那行注释），所以这里不用再错开时间。
+  // 2.5s 起、逐秒采样到 8.5s。
+  Timer.create().start(2.5, false, () => {
+    try {
+      regenProbe();
+    } catch (e) {
+      log.error(`每秒回复探针抛出异常，已隔离：${e}`);
+    }
+  });
+
 }
 
 /**
@@ -185,8 +220,29 @@ export function initialize(): void {
     log.error(`initItemRelicBridge() 抛出异常，已隔离：${e}`);
   }
 
+  // 测试技能（吸血 / 治疗 / 治疗加成）的效果订阅。**只是订阅，不发技能** ——
+  // 技能发给哪些单位取决于单位什么时候被造出来，那件事在 `main()` 的 debug 分支里做。
+  // 包 try/catch 的理由同上面几处：这里抛出去后面所有 system 的 init 都不会执行。
+  try {
+    initTestSkills();
+  } catch (e) {
+    log.error(`initTestSkills() 抛出异常，已隔离：${e}`);
+  }
+
   RelicBarUI.getInstance().create();
   BuffBarUI.getInstance().create();
+
+  // 测试技能那两个 Buff 的图标 / 名字 / Tips。**必须排在 `BuffBarUI.create()` 之后** ——
+  // 那个 `create()` 自己会先注册内置那一批（护盾），这里跟着后面注册本仓的。
+  // 两边 key 不重叠、渲染时才查表，所以顺序其实无所谓；这么排只是读起来因果清楚。
+  //
+  // 包 try/catch 的理由同下面几处：bootstrap.lua 调 main.initialize() 时没有 pcall，
+  // 这里抛出去后面所有 system 的 init 都不会执行。
+  try {
+    registerSkillBuffDisplays();
+  } catch (e) {
+    log.error(`registerSkillBuffDisplays() 抛出异常，已隔离：${e}`);
+  }
 
   // 把 buff 栏接到「选中/取消选中」上。
   // **之前一直漏了这一步** —— 只 create() 不 bind，事件从不触发，watchTarget 恒为
@@ -286,6 +342,50 @@ export function initialize(): void {
     StatSystem.getInstance().init();
   } catch (e) {
     log.error(`StatSystem.init() 抛出异常，属性不会写回原生：${e}`);
+  }
+
+  // 吸血（阶段 B / Step 5）。**位置必须在 `StatSystem.init()` 之后** —— 它每发物理伤害
+  // 都要读施法者的 `LIFESTEAL`，属性表得先有人冲刷。
+  //
+  // 它**不依赖 `DamagePipeline` 的注册顺序**，但依赖那个管线真的在跑（没有管线就没有
+  // `DamageContext`，`findDamageContext` 恒返回 undefined，表现是「吸血永远不触发」）。
+  // 排在这两处之后，读起来是「管线活着 → 属性活着 → 吸血活着」。
+  //
+  // 包 try/catch 的理由同上面几处：bootstrap.lua 调 main.initialize() 时没有 pcall，
+  // 这里抛出去后面所有语句都不会执行。
+  try {
+    LifestealSystem.getInstance().init();
+  } catch (e) {
+    log.error(`LifestealSystem.init() 抛出异常，已隔离：${e}`);
+  }
+
+  // 碎冰（控制效果线 / 冻结的出口）。**位置必须在 `DamagePipeline` 之后** ——
+  // 它靠 priority 4 排在护盾(10)之后读「真正扣掉的血」，但**注册顺序不影响执行顺序**
+  // （那是 priority 决定的），排在这里是因为它和吸血是同一条链上的邻居。
+  //
+  // 它**不依赖 `StatSystem`**：阈值读的是原生最大生命，不碰属性表。
+  //
+  // 包 try/catch 的理由同上面几处：bootstrap.lua 调 main.initialize() 时没有 pcall，
+  // 这里抛出去后面所有语句都不会执行。
+  try {
+    FreezeShatterSystem.getInstance().init();
+  } catch (e) {
+    log.error(`FreezeShatterSystem.init() 抛出异常，已隔离：${e}`);
+  }
+
+  // 冷却缩减（CDR 阶段 / Step 2）。**位置必须在 `StatSystem.init()` 之后** ——
+  // 它每次施法都要读施法者的 `COOLDOWN_REDUCTION`，属性表得先有人冲刷。
+  // 与吸血并列放在这里，读起来是「属性活着 → 消费属性的系统活着」。
+  //
+  // 它**不依赖任何其它系统的注册顺序**：读写技能冷却走的是 `Dz*` 直读原生
+  // （不碰 ability 句柄），技能事件来自 `GameEvent` 早就注册好的通用频道。
+  //
+  // 包 try/catch 的理由同上面几处：bootstrap.lua 调 main.initialize() 时没有 pcall，
+  // 这里抛出去后面所有语句都不会执行。
+  try {
+    CooldownReductionSystem.getInstance().init();
+  } catch (e) {
+    log.error(`CooldownReductionSystem.init() 抛出异常，已隔离：${e}`);
   }
 
   // 属性面板（阶段 E）。**位置在 `StatSystem.init()` 之后** —— 面板要读

@@ -350,9 +350,25 @@ export class BuffBarUI {
     });
   }
 
+  /**
+   * 换一个被观察的单位。**任何单位都可以，含敌方**。
+   *
+   * ## 为什么不再限定「本地玩家拥有的单位」（2026-10-06 口径）
+   *
+   * 原来这里有一道 `actor.owner !== MapPlayer.fromLocal()` 的闸，后果是**给别人的单位
+   * 上的 buff 全看不见** —— 测试时「英雄给友方步兵放减速/禁锢，图标一个都不出现」，
+   * 因为选中步兵直接把栏清空了。而 buff 栏恰恰是验证 debuff 是否落地的**唯一**可视化读数。
+   *
+   * 代价（已知、接受）：选中敌方单位也会显示它的 buff。这是有意的 —— 选中即查看，
+   * 与「选中谁就操作谁」一致。
+   *
+   * ⚠️ **这道闸原来是三胞胎**（这里 + `refreshTimeLabels` + `rebuildSlots`），放开时
+   * 必须**三处一起改**。只改一处会得到最难受的半开状态：栏建起来了，但 0.1 秒后的
+   * 结构检查（或重建）又把它清掉，表现为「buff 图标闪一下就没」。
+   */
   public setWatchTarget(actor: Actor | undefined): void {
     this.watchTarget = actor;
-    if (!actor || actor.owner !== MapPlayer.fromLocal()) {
+    if (!actor) {
       this.clearSlots();
       return;
     }
@@ -429,7 +445,8 @@ export class BuffBarUI {
     }
 
     if (!this.watchTarget) return;
-    if (this.watchTarget.owner !== MapPlayer.fromLocal()) return;
+    // 这里原来有一道「非本地玩家单位直接 return」的闸，与 `setWatchTarget` /
+    // `rebuildSlots` 是一组，三处一起放开的（见 `setWatchTarget` 的注释）。
 
     const buffs = this.watchTarget.buffManager.getSortedBuffs();
     const n = math.min(buffs.length, this.getMaxSlots());
@@ -568,7 +585,8 @@ export class BuffBarUI {
   private rebuildSlots(): void {
     this.clearSlots();
     if (!this.gameUI || !this.watchTarget) return;
-    if (this.watchTarget.owner !== MapPlayer.fromLocal()) return;
+    // 第三道「非本地玩家单位」的闸原来在这里，与上面两处一起放开的
+    // （见 `setWatchTarget` 的注释）。
 
     const buffs = this.watchTarget.buffManager.getSortedBuffs();
     const n = math.min(buffs.length, this.getMaxSlots());

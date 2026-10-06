@@ -42,10 +42,10 @@ export const StatType = {
   // ---- 基础战斗 ----
   BASE_ATTACK: 8, //    白字基础攻击（原生 UNIT_STATE_ATTACK_WHITE）。`%攻击力` 作用在这一层
   BONUS_ATTACK: 9, //   绿字加成攻击（原生 UNIT_STATE_ATTACK_BONUS）。装备的固定攻击力落这一层
-  ATTACK_SPEED: 10, //  攻速。v1 纯 TS 侧（0x51 在 1.27a 是否可写待实测）
+  ATTACK_SPEED: 10, //  攻速**倍率**（1.0 = 100%），原生可读写，见下面 ⚠️
   ARMOR: 11, //         护甲（原生）
-  HP_REGEN: 12, //      每秒生命回复。纯 TS 侧
-  MP_REGEN: 13, //      每秒魔法回复。纯 TS 侧
+  HP_REGEN: 12, //      每秒生命回复（原生，走 JAPI 的 DzSetUnitLifeRegen）
+  MP_REGEN: 13, //      每秒魔法回复（原生，走 JAPI 的 DzSetUnitManaRegen）
 
   // ---- 元素（非七元素维度）----
   ELEMENTAL_MASTERY: 14, // 元素精通
@@ -65,7 +65,34 @@ export const StatType = {
   DAMAGE_REDUCTION: 26, //  免伤率：全局减伤乘区，上限 0.8
 } as const;
 
-/** 标量块的项数。元素块基址由它推出，不要手写数字 */
+/**
+ * ⚠️ **`ATTACK_SPEED` 是「倍率」，不是「每秒攻击次数」—— 而且它是可以写回去的。**
+ *
+ * 2026-10-06 实测（memory `wc3-unit-state-japi-write`）：
+ *
+ * | 单位 | `GetUnitState(u, 0x51)` | `0x25`（基础攻击间隔，秒） |
+ * |---|---|---|
+ * | 步兵 hfoo | **1.000** | 1.350 |
+ * | 圣骑士 Hpal | **1.260** = `1 + 13 敏捷 × 0.02` | 2.200 |
+ *
+ * 步兵间隔 1.35s ⇒ 若是「次/秒」应读 0.74，实测却是 1.000 整 —— 那是**没有任何
+ * 加速的出厂倍率**。实际频率 = `0x51 / 0x25`。
+ *
+ * 写：`SetUnitState(u, UNIT_STATE_ATTACK_SPEED, v)`（`0x51`）。**验证过**：
+ * 写 2.52 读回 2.52、撑过 6 秒没被冲、游戏里出手肉眼可见变快。
+ * KKWE 的触发器动作「设置单位属性 [R]」就是这一句（`ydwe/action.txt` 的
+ * `[SetUnitState]`）。wc3ts 的 `setUnitAttackSpeedJAPI` 也是它 —— 它那个形参名
+ * `attacksPerSecond` 是错的。
+ *
+ * 另有一条更要紧的实测：**引擎会把敏捷增量叠加在写回值之上**。写 2.520 之后
+ * 敏捷 13→23，读数变 2.720（正好 +0.2），敏捷还原又回到 2.520。所以攻速 buff
+ * 不会被升级 / 加敏捷冲掉。
+ *
+ * ⚠️ **但还没接线**（`StatSheet` 既不快照它的 base、也没有 `writeNative` 分支）：
+ * 上面的写回是**绝对值覆盖**，而 base 是冻结快照 —— 先接上去的话，之后有来源改
+ * 攻速时会把引擎自己叠的那部分（敏捷成长）一起抹掉。这和 `HP_REGEN` 那两个是
+ * **同一个待治理的毛病**，见 `todo_next.md`；治理之前**别给它挂来源**。
+ */
 export const SCALAR_STAT_COUNT = 27;
 
 // ==================== 元素块 ====================
@@ -269,6 +296,13 @@ export function clampFinal(stat: StatId, v: number): number {
       return v < 0 ? 0 : v;
     case StatType.HEAL_BONUS:
       return v < -1 ? -1 : v; // 治疗可以被削到 0 收益（-100%），但不该变成负数治疗
+    case StatType.MOVE_SPEED:
+      // 移速下限 0。「禁锢」是用 `MULTIPLIER = -1` 做的（乘区归零，见
+      // `ControlBuffs.ts`），而 `MULTIPLIER` 是累乘的 —— 写 -1 两次得到
+      // `0 * 0 = 0` 没问题，但**任何 `< -1` 的值都会算出负移速**，喂给
+      // `SetUnitMoveSpeed` 的行为无保证。钳在这里同时也是把「禁锢 = 移速归零」
+      // 钉成**显式**语义，而不是依赖乘法恰好得 0。
+      return v < 0 ? 0 : v;
     default:
       return v;
   }

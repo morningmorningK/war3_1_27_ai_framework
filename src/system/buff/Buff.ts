@@ -35,6 +35,26 @@ export abstract class Buff {
   maxStacks?: number;
   /** 正面 / 负面 / 中性 */
   readonly polarity: BuffPolarity;
+  /**
+   * 本 Buff 是否通过 `PauseUnit` **占用着宿主的暂停位**。默认 `false`。
+   *
+   * ## 为什么需要这个标志
+   *
+   * `PauseUnit(u, false)` 是**一个布尔位，没有引用计数** —— 谁都能解开别人的暂停。
+   * 所以「移除时要不要解除暂停」这个判断，必须知道**场上还有没有别的家伙也占着这一位**。
+   *
+   * 原先 `StunBuff.onRemove()` 是自己数 `getBuffsByType(BuffTypeId.STUN)` 的，
+   * 那在只有眩晕一个暂停类的时候是对的，**加进冻结之后就错了**：
+   * 单位同时被眩晕 + 冻结时，眩晕先到期 → 数 `STUN` 数到 0 → 解除暂停 →
+   * **冻结还在生效，单位已经能动了**。
+   *
+   * 改成让 buff 自己声明「我占不占暂停位」，判断交给 `BuffManager.hasPauseControl()`。
+   * 将来加第三个暂停类控制（击飞、恐惧）只需覆写这一个字段，`BuffManager` 一行都不用动。
+   *
+   * ⚠️ **只声明「我用 `PauseUnit`」**，不要往里塞别的语义（比如「我禁止攻击」）——
+   * 那个判断的唯一消费者是暂停位守卫。
+   */
+  readonly pauseControl: boolean = false;
   /** 施加者单位 id，可选 */
   sourceId: number = 0;
 

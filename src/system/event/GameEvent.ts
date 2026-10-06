@@ -34,6 +34,16 @@ export const enum GameEventType {
   // 单位事件
   UNIT_DEATH = "game:Actor:death",
   UNIT_DAMAGED = "game:Actor:damaged",
+  /**
+   * ⚠️ **自建事件**：1.27a 没有原生的「单位被治疗」，事件源是
+   * `HealSystem.applyHeal()`。详见 `onUnitHealed`。
+   */
+  UNIT_HEALED = "game:Actor:healed",
+  /**
+   * ⚠️ **自建事件**：1.27a 没有原生的「冻结被击碎」。事件源是
+   * `FreezeShatterSystem`（碎冰的唯一出口）。详见 `onUnitShattered`。
+   */
+  UNIT_SHATTERED = "game:Actor:shattered",
   UNIT_ATTACKED = "game:Actor:attacked",
   UNIT_SUMMONED = "game:Actor:summoned",
   UNIT_SELECTED = "game:Actor:selected",
@@ -122,6 +132,44 @@ export class UnitDamageEventData implements UnitEventData {
     EXSetEventDamage(amount);
     this.damage = amount;
   }
+}
+
+/**
+ * 单位被治疗事件数据。
+ *
+ * **与同目录其它 `UnitXxxEventData` 不同，这不是引擎事件的载荷** —— 它由
+ * `HealSystem.applyHeal()` 手工发出来，见 `onUnitHealed`。
+ *
+ * 用 `interface` 而不是像 `UnitDamageEventData` 那样用 `class`：伤害那份要带
+ * `setEventDamage()` 这种能改结算值的方法，治疗没有「回写」这回事，发出去就是既成事实。
+ */
+export interface UnitHealEventData extends UnitEventData {
+  /**
+   * **实际**回复的生命值。
+   *
+   * ⚠️ 不是算出来的治疗量 —— 满血时这里是 `0`，被上限削掉的部分也不算在内。
+   * 飘字靠这一点避开「满血飘 `+0`」（计划风险 #17）。
+   */
+  amount: number;
+  /** 治疗来源。`applyHeal()` 允许不传，所以是可选的 */
+  source?: Actor;
+}
+
+/**
+ * 单位身上冻结被击碎的事件数据。
+ *
+ * 与 `UnitHealEventData` 同类 —— **不是引擎事件的载荷**，由 `FreezeShatterSystem`
+ * 手工发出来（见 `onUnitShattered`）。用 `interface` 的理由也相同：
+ * 没有任何需要回写的结算值，发出去就是既成事实。
+ */
+export interface UnitShatterEventData extends UnitEventData {
+  /**
+   * 打碎冰的那个攻击者。
+   *
+   * ⚠️ **可选，订阅方别当必填** —— 这个事件报的是「**冰碎了**」，
+   * 而拿不到攻击者时碎冰照样发生（那一发只是不冰爆）。
+   */
+  source?: Actor;
 }
 
 /**
@@ -460,6 +508,42 @@ export class GameEventManager extends EventEmitter {
     options?: SubscribeOptions
   ): number {
     return this.on(GameEventType.UNIT_DAMAGED, handler, options);
+  }
+
+  /**
+   * 订阅单位被治疗事件。
+   *
+   * ⚠️ **这个事件是自建的**，和本类其它 `onUnitXxx` 不一样：1.27a 没有原生的
+   * 「单位被治疗」，全仓唯一的事件源是 `HealSystem.applyHeal()`。所以这里
+   * **不注册任何原生触发器**，只是往订阅表里插一条 —— 对比 `onUnitDeath` 那批，
+   * 它们都会先 `registerUnitDeathEvent()`。
+   *
+   * 因此：**别在别处直接 `emit(UNIT_HEALED, ...)` 造假数据**，那样 `amount`
+   * 与真实血量就对不上了。要回血一律走 `applyHeal()`。
+   */
+  public onUnitHealed(
+    handler: GameEventHandler<UnitHealEventData>,
+    options?: SubscribeOptions
+  ): number {
+    return this.on(GameEventType.UNIT_HEALED, handler, options);
+  }
+
+  /**
+   * 订阅「冻结被击碎」事件。
+   *
+   * ⚠️ **这个事件是自建的**，与 `onUnitHealed` 同一条理由：1.27a 没有原生的
+   * 碎冰事件，全仓唯一的事件源是 `FreezeShatterSystem.onUnitDamaged()` 里
+   * 碎冰成功的那一处。所以这里**不注册任何原生触发器**，只是往订阅表里插一条。
+   *
+   * 它发在冰爆**之前**（`FreezeShatterSystem` 里有说明），所以订阅方在
+   * 回调里拿到的血量还是这一刀**没结算**时的值 —— 与 `UNIT_DAMAGED` 的
+   * 「派发中」时序相同，而不是 `UNIT_HEALED` 那种既成事实的通报。
+   */
+  public onUnitShattered(
+    handler: GameEventHandler<UnitShatterEventData>,
+    options?: SubscribeOptions
+  ): number {
+    return this.on(GameEventType.UNIT_SHATTERED, handler, options);
   }
 
   /**

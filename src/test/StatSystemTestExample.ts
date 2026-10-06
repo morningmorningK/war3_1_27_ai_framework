@@ -50,25 +50,42 @@ const EPS = 1e-6;
 let passed = 0;
 let failed = 0;
 
+/**
+ * 三条断言辅助。**只有失败才打日志** —— 通过的那些一个字都不占。
+ *
+ * 这么改是因为自测是**每局都跑**的：全部通过时它本来是六十多行「[通过] ……」，
+ * 而每一行说的都是同一件事，真出问题时反而要在这堆噪音里找那一行红的。
+ * 通过的条数没有丢，末尾的汇总行照旧报 `通过 N，失败 0`。
+ * 与 `StatPanelTestExample` 的写法保持一致。
+ */
 function check(label: string, expected: number, actual: number): void {
   const ok = Math.abs(expected - actual) < EPS;
-  if (ok) passed++;
-  else failed++;
-  log.info(`[${ok ? "通过" : "失败"}] ${label}：期望 ${expected}，实际 ${actual}`);
+  if (ok) {
+    passed++;
+    return;
+  }
+  failed++;
+  log.error(`[失败] ${label}：期望 ${expected}，实际 ${actual}`);
 }
 
 function checkBool(label: string, expected: boolean, actual: boolean): void {
   const ok = expected === actual;
-  if (ok) passed++;
-  else failed++;
-  log.info(`[${ok ? "通过" : "失败"}] ${label}：期望 ${expected}，实际 ${actual}`);
+  if (ok) {
+    passed++;
+    return;
+  }
+  failed++;
+  log.error(`[失败] ${label}：期望 ${expected}，实际 ${actual}`);
 }
 
 function checkText(label: string, expected: string, actual: string): void {
   const ok = expected === actual;
-  if (ok) passed++;
-  else failed++;
-  log.info(`[${ok ? "通过" : "失败"}] ${label}：期望「${expected}」，实际「${actual}」`);
+  if (ok) {
+    passed++;
+    return;
+  }
+  failed++;
+  log.error(`[失败] ${label}：期望「${expected}」，实际「${actual}」`);
 }
 
 /**

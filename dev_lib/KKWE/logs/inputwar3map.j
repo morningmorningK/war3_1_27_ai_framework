@@ -37,6 +37,12 @@ function CreateItems takes nothing returns nothing
 	call CreateItem('clfm',-1955.1,476.4)
 	call CreateItem('lgdh',-1859.6,475.4)
 	call CreateItem('kpin',-1920.4,394.9)
+	call CreateItem('I004',-2025.7,206.9)
+	call CreateItem('I002',-1963.4,208.6)
+	call CreateItem('I003',-1889.1,222.2)
+	call CreateItem('mnst',-1647.7,519.8)
+	call CreateItem('hlst',-1654.0,442.1)
+	call CreateItem('hlst',-1659.4,361.9)
 endfunction
 function CreateUnits takes nothing returns nothing
 	local unit u

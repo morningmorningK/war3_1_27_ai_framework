@@ -33,11 +33,30 @@
  * 所以这条功能没有碰 `ShieldSystem.ts`，也没有往 `GameEvent.ts` 加事件类型。
  * 代价是它依赖「100 与 0 之间只有护盾会改 `data.damage`」这个当前事实。
  *
- * ## 这里**不管**治疗飘字
+ * ## 治疗飘字（浅绿 `+N`）
  *
- * 治疗 = 浅绿带 `+`，色码常量 `HEAL_COLOR` 已经备好了，但**目前没有任何地方发它** ——
- * `GameEventType` 里没有 heal 事件，1.27a 也没有原生的「单位被治疗」事件。
- * 要做那条得先有事件源。
+ * 治疗 = 浅绿带 `+`，色常量是 `damageConstants.HEAL_COLOR`。
+ *
+ * 它和伤害走**两条完全不同的来路**：伤害是引擎事件（`UNIT_DAMAGED`），
+ * 治疗是**自建事件**（`UNIT_HEALED`）—— 1.27a 没有原生的「单位被治疗」，
+ * 事件源全仓只有 `HealSystem.applyHeal()` 一处（`GameEvent.ts` 的 `onUnitHealed` 有说明）。
+ * 所以这里多订阅一条，其余（过滤、对象池、飘字参数）照抄 `onUnitDamaged` 那一套。
+ *
+ * 两处刻意的不同，见 `onUnitHealed`：**起点高一档**（和同一时刻的伤害数错开），
+ * 以及**只飘 `>= 1` 的数**（`applyHeal` 满血时返回 0，飘 `+0` 是噪音）。
+ *
+ * ## 碎冰公告（冰蓝色「碎冰」两个字）
+ *
+ * 冰被击碎时在目标头顶飘一个「碎冰」。同样是**自建事件**（`UNIT_SHATTERED`，
+ * 事件源只有 `FreezeShatterSystem` 一处），但它跟伤害/治疗还有一点不同：
+ * **它没有数值** —— 只是一句话，所以没有取整、没有 `+`、没有暴击那一套。
+ *
+ * ⚠️ **它排在伤害数字之前**，这是用户口径。两个手段合起来做到的：
+ *
+ *   - **时间上**：`FreezeShatterSystem` 在 priority 4 发这个事件，而它触发的那次
+ *     冰爆是在**发完之后**才派发的 —— 于是「碎冰」先建出来，冰爆的数字其次，
+ *     最外层那一刀的数字最后。同一帧内三者的创建顺序就是照这个顺序。
+ *   - **空间上**：起点比伤害数高一档（`SHATTER_RISE`），三串字各占一层互不重叠。
  *
  * ## ⚠️ 优先级必须小于 `ShieldSystem` 的 10
  *
@@ -71,13 +90,13 @@
 
 import { MapPlayer, Timer } from "@eiriksgata/wc3ts/*";
 import { gameEvents } from "../event";
-import { UnitDamageEventData } from "../event/GameEvent";
+import { UnitDamageEventData, UnitHealEventData, UnitShatterEventData } from "../event/GameEvent";
 import { createLogger } from "src/utils/logger";
 import { DamageTextManager, FloatDirection, colorHexOf } from "./DamageTexttag";
 // ⚠️ **直连文件，不走 `src/system/combat` 那个 barrel** —— barrel 会把 `DamagePipeline`
 // 拉进来。这里只要「上下文的交接槽位」与两个取色函数，都是轻的东西。
 import { DamageContext, findDamageContext, sumHits } from "src/system/combat/DamageContext";
-import { SHIELD_COLOR, colorize, elementColor } from "src/system/combat/damageConstants";
+import { HEAL_COLOR, SHIELD_COLOR, colorize, elementColor } from "src/system/combat/damageConstants";
 
 const log = createLogger("DamageNumberDisplay");
 
@@ -97,9 +116,11 @@ const DAMAGE_TEXT_PRIORITY = 0;
  * 16 个实例 = **32 个 frame**，建的那一瞬的开销比原来那 144 个轻得多。
  * 只飘本地玩家相关之后同屏并发本来就低，16 是**可调的旋钮**。
  *
- * ⚠️ **一次伤害最多吃掉池里两个** —— 伤害本身 + 被盾吸掉的那部分。
- * 也就是实际能同时显示 8 次命中。池满了 `show()` 只是返回 false（静默丢弃），
- * 不会报错也不会卡，所以这里不必为那多出来的一个再把池子翻倍。
+ * ⚠️ **平时一次命中最多吃掉池里两个** —— 伤害本身 + 被盾吸掉的那部分。
+ * 但**碎冰那一发最多能吃掉四个**：这一刀的伤害数、它的护盾数、「碎冰」两个字
+ * （`onUnitShattered`），外加冰爆自己那一次派发带来的伤害数（可能再带一个护盾数，
+ * 那就是五个）。四个同时出现时池里还剩 12 个，够用；池满了 `show()` 只是返回
+ * false（静默丢弃），不会报错也不会卡，所以这里不必为碎冰再把池子翻倍。
  */
 const POOL_SIZE = 16;
 
@@ -123,6 +144,54 @@ const FLOAT_HEIGHT = 40;
  * `speed` 也更慢（55 vs 80），于是**越飘越开**。
  */
 const SHIELD_DROP = 20;
+
+/**
+ * 治疗飘字比伤害飘字**起点高多少**（世界单位）。
+ *
+ * 治疗经常紧跟着一次伤害出现（打了再奶、奶了再打），两个数如果同起点同速度，
+ * 会叠在同一条轨迹上糊成一片。伤害往**下**错开给了护盾数（`SHIELD_DROP`），
+ * 治疗就往**上**错开 —— 方向相反，三个数同时出现也分得开。
+ *
+ * 方向反过来还顺带给了语义：**向上 = 加血，向下 = 被吸掉的**。
+ */
+const HEAL_RISE = 20;
+
+/**
+ * 「碎冰」字样比伤害飘字**起点高多少**（世界单位）。
+ *
+ * 与 `SHIELD_DROP` / `HEAL_RISE` 同一套手法、同一条理由（同时出现的字必须错开，
+ * 光错开起点还不够、速度也得一样才不越飘越近 —— 这里速度与伤害数同为 80，
+ * 间距因此恒定，正好当「碎冰在上、数字在下」的版式用）。
+ *
+ * 30 让它的起点（`40 + 30 = 70`）**高过治疗的 60**，于是碎冰发生时从上往下读
+ * 是「碎冰 / 治疗 / 伤害」—— 碎冰排在**最前**，与用户口径一致。
+ *
+ * ⚠️ **不要往上加太多**：`FLOAT_HEIGHT` 那条注释记着「100 实测位置太高
+ * （飘在模型头顶以上一截）」，70 已经是「比伤害数明显高一档、又离那次的 100 还远」
+ * 的折中。真要再拉开，先动的是治疗的 60，而不是这一个。
+ */
+const SHATTER_RISE = 30;
+
+/**
+ * 伤害数的**角度抖动幅度**（度）：在本方向上左右各散开这么多。
+ *
+ * ## 为什么需要它
+ *
+ * 碎冰那一刀会**同时**飘两个伤害数 —— 这一刀本身，加上冰爆自己那一次派发。
+ * 两者的起点（`FLOAT_HEIGHT`）、速度（80）、时长（1.5s）**全都一样**，
+ * 不抖的话在屏幕上是**严丝合缝的一个数**，另一个白飘了。
+ *
+ * 25° 下 1.5 秒后两个数横向拉开约 `2 × 120px × sin(25°) ≈ 100px`，
+ * 比飘字本身高得多，足够分开；又不至于像 45° 那样让数字横着飞出去。
+ *
+ * ## 只有伤害数抖
+ *
+ * 护盾数 / 治疗数 /「碎冰」字样都**不抖** —— 前两者本来就靠
+ * `SHIELD_DROP` / `HEAL_RISE` 的高度差分开，而「碎冰」是个**表头**，
+ * 跟着乱跑就不像表头了。所以碎冰发生时的版式是：
+ * 正中上方一个「碎冰」，底下两个伤害数一左一右散开。
+ */
+const FLOAT_SPREAD_DEG = 25;
 
 export class DamageNumberDisplay {
   /**
@@ -163,11 +232,23 @@ export class DamageNumberDisplay {
       { priority: DAMAGE_TEXT_PRIORITY }
     );
 
+    // 治疗飘字。**不传 priority** —— 那个旋钮只在 `UNIT_DAMAGED` 那条链上有意义
+    // （要挤在护盾(10)和管线(100)之间），`UNIT_HEALED` 是自建事件，派发时
+    // `applyHeal` 已经写完血量了，订阅顺序无所谓。
+    gameEvents.onUnitHealed((data: UnitHealEventData) => DamageNumberDisplay.onUnitHealed(data));
+
+    // 碎冰公告。**同样不传 priority** —— 理由同治疗：`UNIT_SHATTERED` 是自建事件，
+    // 派发时碎冰已成事实，本层的先后只影响「碎冰」与冰爆数字谁先建出来。
+    // 而那个顺序已经由发射点定死了（碎冰在前），这里不该再去抢号。
+    gameEvents.onUnitShattered((data: UnitShatterEventData) => DamageNumberDisplay.onUnitShattered(data));
+
     if (DamageNumberDisplay.enabled) {
       DamageNumberDisplay.schedulePool();
     }
 
-    log.info(`伤害数字已接线（优先级 ${DAMAGE_TEXT_PRIORITY}，默认${DamageNumberDisplay.enabled ? "开" : "关"}）`);
+    log.info(
+      `伤害数字已接线（优先级 ${DAMAGE_TEXT_PRIORITY}，默认${DamageNumberDisplay.enabled ? "开" : "关"}），并订阅了治疗 / 碎冰事件`
+    );
   }
 
   public static setEnabled(value: boolean): void {
@@ -292,6 +373,8 @@ export class DamageNumberDisplay {
           height: FLOAT_HEIGHT,
           color,
           direction: FloatDirection.UP,
+          // 角度抖动 —— 碎冰那一刀会同时飘两个伤害数，不抖就是叠在一起（见常量注释）
+          spreadDeg: FLOAT_SPREAD_DEG,
           speed: 80,
           duration: 1.5,
           scale: 0.8,
@@ -354,6 +437,110 @@ export class DamageNumberDisplay {
       }
     } catch (e) {
       log.error(`飘伤害数字失败：${e}`);
+    }
+  }
+
+  /**
+   * 治疗飘字：浅绿 `+N`，起点比伤害高一档。
+   *
+   * 三道门与 `onUnitDamaged` 完全同形（开关 / 池 / 本地玩家），
+   * 差别只在**取数**那一侧：
+   *
+   *   - **数值直接来自事件**（`data.amount`），不需要算任何东西。
+   *     对比伤害那条要读 `DamageContext`、还要减去护盾吸收量 —— 这里之所以不用，
+   *     是因为 `applyHeal` 返回的就是「实际回血量」，它自己在发事件时就是这个数。
+   *   - **没有暴击、没有分段颜色、没有护盾那种「第二个数」**。治疗只有一种颜色、
+   *     一个数，所以连 `richText` 都是 `colorize` 一次拼完的。
+   */
+  private static onUnitHealed(data: UnitHealEventData): void {
+    if (!DamageNumberDisplay.enabled) return;
+    if (!DamageNumberDisplay.poolReady) return;
+
+    const healed = data.Actor;
+    if (healed === undefined) return;
+
+    const localId = MapPlayer.fromLocal().id;
+    const healedIsLocal = data.owner !== undefined && GetPlayerId(data.owner) === localId;
+    const sourceIsLocal =
+      data.source !== undefined &&
+      data.source.owner !== undefined &&
+      data.source.owner.id === localId;
+    if (!healedIsLocal && !sourceIsLocal) return;
+
+    // ⚠️ **满血的一发 `applyHeal` 会走到这里，`amount` 是 0。**
+    // 不挡的话屏幕上会飘一个浅绿的 `+0` —— 那是在说「回了 0 点血」，
+    // 而实际情况是「本来就满，什么都没发生」。
+    const amount = Math.floor(data.amount);
+    if (amount < 1) return;
+
+    try {
+      DamageTextManager.show({
+        damage: amount,
+        worldX: healed.x,
+        worldY: healed.y,
+        // 起点高一档，与同一时刻的伤害数错开（见 `HEAL_RISE`）
+        height: FLOAT_HEIGHT + HEAL_RISE,
+        direction: FloatDirection.UP,
+        speed: 80,
+        duration: 1.5,
+        scale: 0.8,
+        fadeOut: true,
+        richText: colorize("+" + amount, HEAL_COLOR),
+        // **不传 `crit`** —— 治疗没有暴击这回事。字号跟伤害一样是 0.8。
+      });
+    } catch (e) {
+      log.error(`飘治疗数字失败：${e}`);
+    }
+  }
+
+  /**
+   * 碎冰公告：冰蓝色「碎冰」两个字，起点比伤害数高一档。
+   *
+   * 三道门与 `onUnitDamaged` 逐字同形（开关 / 池 / 本地玩家），
+   * 只飘「与本地玩家相关」的那部分 —— 理由见文件头。
+   *
+   * 取数那侧比治疗还简单：**没有数可取**。事件本身不带任何数值，
+   * 所以下面连 `Math.floor` 都没有，也不需要 `>= 1` 那道门（没有「飘出了 0」
+   * 这种可能）。
+   */
+  private static onUnitShattered(data: UnitShatterEventData): void {
+    if (!DamageNumberDisplay.enabled) return;
+    if (!DamageNumberDisplay.poolReady) return;
+
+    const victim = data.Actor;
+    if (victim === undefined) return;
+
+    const localId = MapPlayer.fromLocal().id;
+    const victimIsLocal = data.owner !== undefined && GetPlayerId(data.owner) === localId;
+    // ⚠️ `source` 是**可选**的（那一发可能只碎冰、不冰爆，见 `FreezeShatterSystem`），
+    // 所以这里必须容得下 `undefined` —— 那是「自己打碎的」这条判断为假，
+    // 不是异常，仍然可能凭 `victimIsLocal` 通过。
+    const sourceIsLocal =
+      data.source !== undefined &&
+      data.source.owner !== undefined &&
+      data.source.owner.id === localId;
+    if (!victimIsLocal && !sourceIsLocal) return;
+
+    try {
+      DamageTextManager.show({
+        // 有 `richText`，这个数**不参与渲染** —— 它只是 `DamageTextConfig` 的
+        // 兜底契约（必填）。同理不传 `crit`：一句话没有暴击这回事。
+        damage: 0,
+        worldX: victim.x,
+        worldY: victim.y,
+        // 起点高一档，排在伤害数（和治疗数）之上（见 `SHATTER_RISE`）
+        height: FLOAT_HEIGHT + SHATTER_RISE,
+        direction: FloatDirection.UP,
+        speed: 80,
+        duration: 1.5,
+        scale: 0.8,
+        fadeOut: true,
+        // 颜色取**冰元素色**、不另挑一个：碎冰本来是冰，与冰爆那串数字同色，
+        // 两者读起来才是同一件事（同 `onUnitDamaged` 里「破盾数跟伤害同色」的理由）。
+        richText: colorize("碎冰", elementColor("ice")),
+      });
+    } catch (e) {
+      log.error(`飘碎冰字样失败：${e}`);
     }
   }
 }

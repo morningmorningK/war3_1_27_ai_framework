@@ -11,6 +11,15 @@ import { createLogger } from "src/utils/logger";
 const log = createLogger("Button");
 
 /**
+ * 是否在每次 `create()` 成功后打一行 `"xxx" created successfully`。
+ *
+ * **默认关闭 —— 它是纯噪音：一局开下来十几个按钮就有十几行，而每行说的都是
+ * 同一件事（"建成功了"）。** 真出错时那几行 `warn`/`error` 照旧会打，它们才是
+ * 要看的东西。排查"某个按钮到底建没建"时把这里改成 `true` 即可。
+ */
+const ENABLE_BUTTON_CREATE_LOG = false;
+
+/**
  * FDF 模板预设
  */
 export const ButtonTemplates = {
@@ -347,7 +356,9 @@ export class Button {
       this.backdropFrame.setAlpha(255);
     }
 
-    log.info("\"" + this.label + "\" created successfully with Text component");
+    if (ENABLE_BUTTON_CREATE_LOG) {
+      log.info("\"" + this.label + "\" created successfully with Text component");
+    }
   }
 
   public setOnClick(callback: () => void): Button {

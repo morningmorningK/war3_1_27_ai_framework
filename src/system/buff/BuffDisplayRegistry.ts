@@ -36,7 +36,10 @@ export function registerDefaultBuffDisplays(): void {
   registerBuffDisplay(BuffTypeId.SHIELD, {
     name: "护盾",
     description: "吸收一定伤害；护盾耗尽或持续时间结束时移除。",
-    icon: "ReplaceableTextures\\CommandButtons\\BTNSpell_ShieldWall.blp",
+    // 原先写的 `BTNSpell_ShieldWall.blp` 在 `dev_lib/w3x2lni/template/**` 里
+    // **查无此物**（那个常量并没有 `_`，真实文件名是 `BTNSpellShieldAmulet` 一类），
+    // 表现是 buff 栏上一直画一个空白格子。改成一个确认存在的。
+    icon: "ReplaceableTextures\\CommandButtons\\BTNAntiMagicShell.blp",
   });
 }
 

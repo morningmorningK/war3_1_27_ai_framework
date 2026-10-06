@@ -30,26 +30,39 @@ const log = createLogger("ElemDmgTest");
 let passed = 0;
 let failed = 0;
 
+/**
+ * 三条断言辅助。**只有失败才打日志** —— 理由见 `StatSystemTestExample` 里同名注释：
+ * 自测每局都跑，全绿的四十行是噪音，反而把真失败淹了。末尾的汇总行照旧报通过条数。
+ */
 function check(label: string, expected: number, actual: number): void {
   // 结果是取整过的整数，容差给 0.001 足够——算出来 178.2 期望 178 是「通过」
   const ok = Math.abs(expected - actual) < 0.001;
-  if (ok) passed++;
-  else failed++;
-  log.info(`[${ok ? "通过" : "失败"}] ${label}：期望 ${expected}，实际 ${actual}`);
+  if (ok) {
+    passed++;
+    return;
+  }
+  failed++;
+  log.error(`[失败] ${label}：期望 ${expected}，实际 ${actual}`);
 }
 
 function checkFloat(label: string, expected: number, actual: number): void {
   const ok = Math.abs(expected - actual) < 1e-6;
-  if (ok) passed++;
-  else failed++;
-  log.info(`[${ok ? "通过" : "失败"}] ${label}：期望 ${expected}，实际 ${actual}`);
+  if (ok) {
+    passed++;
+    return;
+  }
+  failed++;
+  log.error(`[失败] ${label}：期望 ${expected}，实际 ${actual}`);
 }
 
 function checkBool(label: string, expected: boolean, actual: boolean): void {
   const ok = expected === actual;
-  if (ok) passed++;
-  else failed++;
-  log.info(`[${ok ? "通过" : "失败"}] ${label}：期望 ${expected}，实际 ${actual}`);
+  if (ok) {
+    passed++;
+    return;
+  }
+  failed++;
+  log.error(`[失败] ${label}：期望 ${expected}，实际 ${actual}`);
 }
 
 /**

@@ -8,7 +8,7 @@ import {
 } from "@eiriksgata/wc3ts/*";
 import { worldToScreen } from "src/utils/helper";
 // ⚠️ **直连文件，不走 `src/system/combat` 那个 barrel** —— barrel 会把 `DamagePipeline`
-// 拉进来（→ RelicSystem → 遗物定义 → 再回到 combat），而本文件是被
+// 拉进来（→ RelicSystem → 遗物 定义 → 再回到 combat），而本文件是被
 // `DamageNumberDisplay` 引的 UI 层。只取 `colorize` 这一个纯字符串函数，路径写死到文件。
 import { colorize } from "src/system/combat/damageConstants";
 import { ScreenCoordinates } from "./ScreenCoordinates";
@@ -47,6 +47,35 @@ export function colorHexOf(color: "red" | "yellow" | "gray" | "blue"): string {
 }
 
 /**
+ * 角度抖动幅度的**下限占上限的比例**。
+ *
+ * 幅度取 `[spreadDeg × 0.4, spreadDeg]` 而不是 `[0, spreadDeg]` —— 后者的下限是
+ * 「一动不动」，那两个数照样可能叠在一起。0.4 之下这个扇区又太窄，起不到分开的作用。
+ */
+const SPREAD_MIN_RATIO = 0.4;
+
+/**
+ * 下一次角度抖动往哪一侧偏（`+1` 右 / `-1` 左），**取一次翻一次**。
+ *
+ * ⚠️ **这是有意不纯随机的。** 纯随机取号的话，同时出现的两个伤害数
+ * （碎冰那一刀 + 冰爆）有相当的概率抽到几乎同一个角度，于是**照样重合** ——
+ * 而那正是要做这件事的原因。改成「左右交替 + 幅度随机」之后，
+ * **相邻两次带抖动的飘字必然分到两侧**，同屏挨着出的两个数就一定分得开。
+ *
+ * 幅度仍是随机的，所以看上去还是「随机角度向上飘」。
+ *
+ * 只有 `spreadDeg > 0` 的飘字会消耗这个号 —— 护盾数 / 治疗数 /「碎冰」字样
+ * 都直着飘，不该把配对打乱。
+ */
+let spreadSign = 1;
+
+function nextSpreadSign(): number {
+  const s = spreadSign;
+  spreadSign = -spreadSign;
+  return s;
+}
+
+/**
  * 漂浮方向
  */
 export enum FloatDirection {
@@ -77,6 +106,17 @@ export interface DamageTextConfig {
   color?: 'red' | 'yellow' | 'gray' | 'blue';
   /** 漂浮方向 */
   direction?: FloatDirection;
+  /**
+   * 在 `direction` 上**左右各散开多少度**。不传 = 0 = 严格照 `direction` 直着飘。
+   *
+   * 存在的理由只有一个：**同时出现的两个数会严丝合缝地叠在一起**。
+   * 碎冰那一刀会飘两个伤害数（这一刀本身 + 冰爆），起点、速度、时长全相同，
+   * 不错开的话在屏幕上就是一个数。
+   *
+   * ⚠️ 抖动的**方向不是纯随机** —— 左右交替、幅度随机，保证相邻两次飘字必然分到
+   * 两侧。理由见 `spreadSign`。
+   */
+  spreadDeg?: number;
   /** 移动速度（像素/秒） */
   speed?: number;
   /** 持续时间（秒） */
@@ -130,6 +170,16 @@ class DamageText {
   private height: number = 0;
   private direction: FloatDirection = FloatDirection.UP;
   private speed: number = 100; // 像素/秒
+  /** 见 `DamageTextConfig.spreadDeg` */
+  private spreadDeg: number = 0;
+  /**
+   * 本次飘字的速度分量（像素/秒），**在 `show()` 里算一次**。
+   *
+   * 角度抖动是**一次性的**随机 —— 逐帧重算的话它就变成了随机游走，
+   * 字会在空中抖而不是斜着飘。
+   */
+  private velX: number = 0;
+  private velY: number = 0;
   private duration: number = 1.5; // 秒
   private scale: number = 0.8;
   private fadeOut: boolean = true;
@@ -250,6 +300,7 @@ class DamageText {
     this.worldY = config.worldY;
     this.height = config.height || 0;
     this.direction = config.direction || FloatDirection.UP;
+    this.spreadDeg = config.spreadDeg || 0;
     this.speed = config.speed || 100;
     this.duration = config.duration || 1.5;
     this.scale = config.scale || 0.8;
@@ -263,6 +314,9 @@ class DamageText {
     this.offsetY = 0;
     this.currentAlpha = 255;
     this.isActive = true;
+
+    // 速度分量在这里定死（含那次性的角度抖动）——**每实例只有这一次随机**
+    this.applyVelocity();
 
     // 设置文字
     this.setupText();
@@ -352,28 +406,56 @@ class DamageText {
   }
 
   /**
+   * 把「方向 + 角度抖动」折成一对速度分量。
+   *
+   * ## 为什么是向量
+   *
+   * 原来 `updateOffset` 是每帧按 `direction` 走一次 `switch` —— 那只表达得了四个
+   * 正方向，「斜着飘」需要任意角。折成向量是最短的写法，顺带把那每帧一次的分支省了。
+   *
+   * ## 角度约定
+   *
+   * `0°` = 正上方，顺时针为正（与屏幕坐标同向：`+X` 右、`+Y` 上）。
+   * 于是 `velX = sin(角) × 速度`、`velY = cos(角) × 速度`，
+   * 上 `(0,+)` / 右 `(+,0)` / 下 `(0,-)` / 左 `(-,0)`，与原来那四个方向逐一对得上。
+   */
+  private applyVelocity(): void {
+    // `NONE` 是「不移动」，不是「朝 0° 以 0 速度移动」—— 直接归零，
+    // 免得下面那套角度换算凭空给一个不动的字安上方向。
+    if (this.direction === FloatDirection.NONE) {
+      this.velX = 0;
+      this.velY = 0;
+      return;
+    }
+
+    let deg = 0; // UP（也是默认值）
+    if (this.direction === FloatDirection.RIGHT) {
+      deg = 90;
+    } else if (this.direction === FloatDirection.DOWN) {
+      deg = 180;
+    } else if (this.direction === FloatDirection.LEFT) {
+      deg = -90;
+    }
+
+    if (this.spreadDeg > 0) {
+      // ⚠️ **只能用 `GetRandomReal`**：`Math.random()` 在 KKWE 下只吐 0/1，
+      // 编译成 Lua 的 `math.random` 也与 WC3 的随机数流不同步
+      // （memory `wc3-math-random-broken`；`DamagePipeline.ts:265` 同样记过）。
+      deg += nextSpreadSign() * GetRandomReal(this.spreadDeg * SPREAD_MIN_RATIO, this.spreadDeg);
+    }
+
+    const rad = (deg * Math.PI) / 180;
+    this.velX = Math.sin(rad) * this.speed;
+    this.velY = Math.cos(rad) * this.speed;
+  }
+
+  /**
    * 更新移动偏移
    */
   private updateOffset(deltaTime: number): void {
-    const moveDistance = this.speed * deltaTime;
-
-    switch (this.direction) {
-      case FloatDirection.UP:
-        this.offsetY += moveDistance;
-        break;
-      case FloatDirection.DOWN:
-        this.offsetY -= moveDistance;
-        break;
-      case FloatDirection.LEFT:
-        this.offsetX -= moveDistance;
-        break;
-      case FloatDirection.RIGHT:
-        this.offsetX += moveDistance;
-        break;
-      case FloatDirection.NONE:
-        // 不移动
-        break;
-    }
+    // 速度分量在 `show()` 里算好（见 `applyVelocity`），这里只做积分。
+    this.offsetX += this.velX * deltaTime;
+    this.offsetY += this.velY * deltaTime;
   }
 
   /**

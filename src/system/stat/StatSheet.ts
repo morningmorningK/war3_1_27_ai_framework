@@ -65,6 +65,9 @@ import {
 // 方向是单向的：`StatSheet → StatSystem`，`StatSystem` 那边只用 `import type` 拿本类，
 // 生成的 StatSystem.lua 顶部不会 require 本文件，所以没有 require 环。
 import { StatSystem } from "./StatSystem";
+import { createLogger } from "src/utils/logger";
+
+const log = createLogger("StatSheet");
 
 /** 生成一个长度 n、全 0 的密集数组。**必须用 push** —— 按下标赋值若留洞，Lua 里 `.length` 是 0 */
 function fillZeros(n: number): number[] {
@@ -161,6 +164,20 @@ export class StatSheet {
     this.base[StatType.BASE_ATTACK] = GetUnitState(u, UNIT_STATE_ATTACK_WHITE);
     this.base[StatType.BONUS_ATTACK] = GetUnitState(u, UNIT_STATE_ATTACK_BONUS);
     this.base[StatType.MOVE_SPEED] = GetUnitMoveSpeed(u);
+
+    // 每秒回复走 **JAPI**，不是 `GetUnitState` —— 1.27a 的 `GetUnitState` 里压根
+    // 没有这两个槽位（`constants/game/units.ts` 里也没有对应常量）。
+    // KKWE 的 `DzGetUnitLifeRegen` / `DzGetUnitManaRegen` 是唯一的读法，
+    // 对应的写回是 `DzSetUnitLifeRegen` / `DzSetUnitManaRegen`（见 `writeNative`）。
+    //
+    // ⚠️ **攻速不在这里**：写回通道是有的（`SetUnitState(u, UNIT_STATE_ATTACK_SPEED, v)`，
+    // 2026-10-06 实测通过，见 `types.ts` 的 ⚠️），但**先别接** ——
+    // 它是「引擎也会自己改」的属性（敏捷变化按增量叠上去），而现在这套「建表时
+    // 快照 base、之后永不回读」的模型一写回就会把引擎那份抹掉。
+    // 先治理漂移（`todo_next.md`），再接。
+    this.base[StatType.HP_REGEN] = DzGetUnitLifeRegen(u);
+    this.base[StatType.MP_REGEN] = DzGetUnitManaRegen(u);
+
     this.base[StatType.CRIT_DMG] = DEFAULT_CRIT_DMG;
 
     // **非英雄不读三围** —— `GetHeroStr` 对非英雄单位的行为无保证。
@@ -336,9 +353,24 @@ export class StatSheet {
   /**
    * 把某个属性的 final 写回魔兽原生。**只有变化过的项才会被调到**（见 `flush`）。
    *
-   * 原生表达得了的只有下面这 9 项，其余（暴击率、元素精通、穿透、韧性、擢升、免伤、
-   * 攻速、回复……）纯 TS 侧，落到 `default` 什么都不做 —— 它们是给伤害管线读的，
+   * 原生表达得了的有下面这 **11 项**，其余（暴击率、元素精通、穿透、韧性、擢升、
+   * 免伤、攻速……）纯 TS 侧，落到 `default` 什么都不做 —— 它们是给伤害管线读的，
    * 引擎本来就不认识。
+   *
+   * ⚠️ **每秒回复那两项走的是 JAPI**（`DzSetUnit*Regen`），不是 `SetUnitState` ——
+   * 1.27a 的原生单位状态里没有回复这个槽位。接它们时最容易走的一条弯路是
+   * 「自建一个每秒 tick 的定时器去加血」，**不需要**：值写进去引擎自己会按秒结算。
+   *
+   * ⚠️ **攻速不在其中**：写回通道是有的（`SetUnitState(u, UNIT_STATE_ATTACK_SPEED, v)`，
+   * 实测通过，见 `types.ts` 的 ⚠️），但**先别顺手加进来**。它和下面那几项一样
+   * 属于「引擎也会自己改」的属性（敏捷变化按增量叠上去），而现在这套模型一写回
+   * 就会把引擎那份抹掉 —— 先治理漂移（`todo_next.md`）。
+   *
+   * ⚠️ **上面这一整段的前提是 `base` 就是引擎的全部**。2026-10-06 实测推翻了它：
+   * 回复字段里物品 / 能力加的那份是**累加**在同一个字段上的（挂 `Arel` 读 +2.00，
+   * 再拿 `rlif` 又 +2.00），而 `base` 是建表那一刻的快照 —— 所以**一写回就抹掉**。
+   * 攻速（敏捷）、生命上限 / 护甲（三围）同理。这是个**全局性**的毛病，不只是回复
+   * 两项的事，见 `todo_next.md`。
    *
    * ⚠️ **不写 `LIFE` / `MANA`**：那两个是引擎管的运行时状态（见 `getFinal`），
    * 我们只在上限下调时顺手钳一下别让它超过上限。
@@ -390,6 +422,25 @@ export class StatSheet {
 
       case StatType.MOVE_SPEED:
         SetUnitMoveSpeed(u, value);
+        break;
+
+      // 每秒回复，同样是「写进去引擎自己按秒结算」——
+      // **不需要自建 tick 定时器**，这一条是接之前最容易走弯路的地方。
+      //
+      // 两个 `DzSet*` 是**唯一**带返回值的写回接口（其余 9 项全是 void），
+      // 所以这里能顺手把「没写进去」这种失败暴露出来。**只打日志、不重试**：
+      // `flush()` 只在值变化时调到本方法，重试等于每拍都写一次，而那并不能
+      // 让一个本来就失败的调用成功。日志是给「游戏里怎么不回血」这类问题查因的。
+      case StatType.HP_REGEN:
+        if (!DzSetUnitLifeRegen(u, value)) {
+          log.warn(`写回每秒生命回复失败：${value}`);
+        }
+        break;
+
+      case StatType.MP_REGEN:
+        if (!DzSetUnitManaRegen(u, value)) {
+          log.warn(`写回每秒魔法回复失败：${value}`);
+        }
         break;
 
       // 三围：**非英雄守卫必须有**。`SetHeroStr` 打在普通单位上是访问违例。

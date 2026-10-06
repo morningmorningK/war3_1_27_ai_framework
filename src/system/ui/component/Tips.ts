@@ -203,7 +203,37 @@ export class Tips {
   }
 
   /**
+   * 是不是「全角」字符（中日韩文字及其标点、全角符号）。
+   *
+   * 数行的时候必须按**实际占宽**数，不能一个字符都当 `charWidthPx` ——
+   * 一个汉字的宽度差不多是两个拉丁字母（`DEFAULT_CHAR_WIDTH_PX` 是照拉丁文定的 9px）。
+   * 混在一起按「字符个数」数，中文内容会被**少算行数**，于是面板被算矮、
+   * 正文框放不下最后一行，**只裁末尾**：看起来像那行压根没拼出来。
+   *
+   * 实测症状：buff Tips 的「护盾：100 / 100」恒不显示 —— 前面三段刚好占满框，
+   * 它掉出框外。改用占宽折算之后行数才对得上。
+   */
+  private static isWideChar(code: number): boolean {
+    return (
+      (code >= 0x1100 && code <= 0x115f) || // 韩文字母
+      (code >= 0x2e80 && code <= 0x303e) || // CJK 部首、标点
+      (code >= 0x3041 && code <= 0x33ff) || // 假名、注音、CJK 兼容
+      (code >= 0x3400 && code <= 0x4dbf) || // CJK 扩展 A
+      (code >= 0x4e00 && code <= 0x9fff) || // CJK 基本区
+      (code >= 0xa000 && code <= 0xa4cf) || // 彝文
+      (code >= 0xac00 && code <= 0xd7a3) || // 韩文音节
+      (code >= 0xf900 && code <= 0xfaff) || // CJK 兼容表意
+      (code >= 0xfe30 && code <= 0xfe6f) || // CJK 兼容形式
+      (code >= 0xff00 && code <= 0xff60) || // 全角 ASCII
+      (code >= 0xffe0 && code <= 0xffe6) //   全角符号
+    );
+  }
+
+  /**
    * 在给定内容宽度下估算正文像素高度（多行、自动换行近似）。
+   *
+   * `charsPerLine` 与 `units` 都以 `charWidthPx`（拉丁字宽）为单位 —— 全角字符折成 2，
+   * 量纲才一致。见 `isWideChar`。
    */
   private static estimateTextHeightPx(
     displayText: string,
@@ -223,10 +253,21 @@ export class Tips {
       if (len === 0) {
         lineCount += 1;
       } else {
-        lineCount += Math.max(1, Math.ceil(len / charsPerLine));
+        let units = 0;
+        for (let i = 0; i < len; i++) {
+          units += Tips.isWideChar(part.charCodeAt(i)) ? 2 : 1;
+        }
+        lineCount += Math.max(1, Math.ceil(units / charsPerLine));
       }
     }
-    const h = lineCount * lineHeightPx;
+    // ⚠️ **多留一整行**：这里估的是「正文需要多高」，而正文框的高度就是它 ——
+    // 估矮了最后一行会被**直接裁掉**（实测症状：buff Tips 的「护盾：100 / 100」恒不显示，
+    // 前面几行却完好），估高了只是底部多一截留白。两边代价完全不对称，所以宁可估高。
+    //
+    // 需要这行余量的现实原因：`DEFAULT_LINE_HEIGHT_PX`（18）是照某个字体估的，
+    // 而正文框用的是魔兽默认字体、实际行距比它略大。行数算对了、总高度仍会差一点点，
+    // 刚好够把末行挤出框外。
+    const h = (lineCount + 1) * lineHeightPx;
     return Math.max(Tips.MIN_TIPS_HEIGHT_PX, h);
   }
 

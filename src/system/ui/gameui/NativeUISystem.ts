@@ -149,6 +149,21 @@ const APPLY_UNVERIFIED_ORIGIN_FRAME_OPS = false;
 const ENABLE_CLIPBOARD_DIAGNOSTICS = false;
 
 /**
+ * 是否把 `create()` 的逐步结果 + frame 查找报告打到控制台。
+ *
+ * **默认关闭 —— 它是纯噪音，每局 42 行。**
+ *
+ * 那 42 行是阶段 1「原生 frame 到底能不能按名字找到」那个调查留下的：
+ * 9 行 `OK |xxx`（各步骤成败）+ 26 行 `LOOK |HIT/MISS|名字|finder`。
+ * 结论早就落定并写进了 `NativeFrames.ts` 的说明里，之后每次进游戏重打一遍
+ * 没有任何信息增益 —— 只会把真正要看的那几十行淹掉。
+ *
+ * 报告**照旧会被收集**并存在 `this.lastReport` 里，所以要把这里改回 `true`
+ * 随时能拿到，不用重新查一遍。
+ */
+const ENABLE_CREATE_DIAGNOSTICS = false;
+
+/**
  * 玩家金币。
  *
  * **绝对不要写回 `ConvertPlayerState(1)` 这种在模块顶层求值的写法。**
@@ -321,6 +336,10 @@ export class NativeUISystem {
    * 造成那族新的 `MSVCP140.dll` 闪退的东西。
    */
   private flushDiagnostics(report: string[]): void {
+    if (!ENABLE_CREATE_DIAGNOSTICS) {
+      return;
+    }
+
     for (const line of report) {
       print(`[NativeUISystem] ${line}`);
     }

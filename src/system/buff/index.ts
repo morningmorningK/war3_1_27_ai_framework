@@ -1,6 +1,9 @@
 export { Buff } from "./Buff";
 export { BuffManager } from "./BuffManager";
 export { ShieldBuff } from "./ShieldBuff";
+export { StunBuff } from "./StunBuff";
+export { FreezeBuff } from "./FreezeBuff";
+export { SlowBuff, RootBuff, SLOW_MULTIPLIER, ROOT_MULTIPLIER } from "./ControlBuffs";
 export { BuffSystem } from "./BuffSystem";
 export {
   BuffTypeId,

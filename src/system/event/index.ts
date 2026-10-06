@@ -70,6 +70,8 @@ export {
   UnitEventData,
   UnitDeathEventData,
   UnitDamageEventData,
+  UnitHealEventData,
+  UnitShatterEventData,
   UnitSummonedEventData,
   SpellEventData,
   PlayerChatEventData,

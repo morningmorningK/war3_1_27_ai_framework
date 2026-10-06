@@ -21,3 +21,6 @@ export { burningBloodDefinition, BURNING_BLOOD_MAX_HP_BONUS } from "./definition
 export { warFangDefinition, WAR_FANG_ATTACK_BONUS } from "./definitions/warFang";
 export { ironPlateDefinition, IRON_PLATE_ARMOR_LEVELS } from "./definitions/ironPlate";
 export { arcaneGrimoireDefinition } from "./definitions/arcaneGrimoireWater";
+export { timeHourglassDefinition, TIME_HOURGLASS_CDR } from "./definitions/timeHourglass";
+export { shieldAmuletDefinition, SHIELD_AMULET_BONUS } from "./definitions/shieldAmulet";
+export { tenacityCharmDefinition, TENACITY_CHARM_BONUS } from "./definitions/tenacityCharm";

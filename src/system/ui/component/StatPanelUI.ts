@@ -6,8 +6,8 @@
  * 已做：居中的背景板 + 标题栏、C 开关、ESC 关闭（走 `EscapeRouter`）、
  * **拖动整个面板**、**三个分页按钮 + 权威页状态**、**行槽虚拟化**、
  * **0.1s 实时刷新**、**经验两条（直读原生，语义已实测）**、
- * **三个页面的全部行（12 + 17 + 14 = 43 行）**、**选中跟随与自动显隐**、
- * **滚动轨道 + 可拖把手**（页面②17 行 / ③14 行现在能看全了）。
+ * **三个页面的全部行（12 + 17 + 15 = 44 行）**、**选中跟随与自动显隐**、
+ * **滚动轨道 + 可拖把手**（页面②17 行 / ③15 行现在能看全了）。
  * 未做：滚轮（Step 8 —— 现在只能拖把手，鼠标滚轮压在面板上仍会缩放镜头）。
  *
  * ## 两个「开着」：意图 vs 可见（决策 5）
@@ -501,10 +501,19 @@ function pick(view: TargetView, stat: StatId, native: (u: unit) => number): numb
 }
 
 /**
- * 纯 TS 侧属性（攻速 / 回复）：**引擎不认识，也没有原生读法**。
+ * 攻速：**当前恒为 `—`**（临时状态，见下）。
  *
- * 两条都显示 `—`：没有属性表固然没有值；**有表但值恰好是 0 也显示 `—`**，
- * 因为这三项的 base 从来没被快照过，0 不代表「每秒 0 次 / 0 点」。
+ * 它现在是全场唯一**没接进属性表**的原生属性。注意措辞 —— **不是写不回去**
+ * （2026-10-06 实测推翻了那个说法：`SetUnitState(u, 0x51, v)` 能写且持久，
+ * 见 `types.ts` 的 ⚠️），而是**先别接**：它是「引擎也会自己改」的属性
+ * （敏捷增量叠在写回值之上），而现在这套「建表时快照 base、之后永不回读」的模型
+ * 一写回就会把引擎那份抹掉。先治理漂移，见 `todo_next.md`。
+ *
+ * 所以这里**既不快照 base、也不挂来源** —— 建了的话只能显示一个和引擎对不上的数，
+ * 等于面板撒谎。
+ *
+ * 两处 `—` 的含义不同：**没表**是「还没接」；**有表但值是 0** 同样是「还没接」，
+ * 不是「攻速每秒 0 次」。
  */
 function tsOnlyText(view: TargetView, stat: StatId): string {
   const sheet = view.sheet;
@@ -519,18 +528,58 @@ function tsOnlyText(view: TargetView, stat: StatId): string {
 }
 
 /**
+ * 每秒回复（生命 / 魔法）：`12.50`。
+ *
+ * ## ⚠️ 这两项**故意绕开属性表**，永远直读原生
+ *
+ * 和面板上其他每一行都不一样 —— 它们**不走 `pick`**。理由是 2026-10-06 实测出来的
+ * 两条口径（详见 memory `wc3-unit-state-japi-write`）：
+ *
+ *   1. `DzGetUnitLifeRegen` / `DzGetUnitManaRegen` 读的是**总回复**：物品、能力、
+ *      光环加的那部分**累加在同一个字段里**（挂 `Arel` 读 +2.00，再拿一个 `rlif`
+ *      又 +2.00）。它就是「这个单位每秒实际回多少」。
+ *   2. `StatSheet` 的 `base[HP_REGEN]` 是**建表那一刻快照一次、之后永不回读**的。
+ *      所以只要单位有表，`getFinal` 给的就是一个**冻住的值** —— 英雄中途拿到生命石，
+ *      表那边一动不动。
+ *
+ * 两者一比，原生读数才是真值。走 `pick` 的后果用户已经实测到了：
+ * 「让英雄拿着魔法石、生命石也一样不变」。
+ *
+ * ## 和写回不冲突
+ *
+ * 属性表真要给回复挂来源时，写回去的是 `base + 来源`；刷过之后原生读数**就是**那个值，
+ * 这里读到的自然跟着变。中间只差一个冲刷拍（≤0.1s），对面板无所谓。
+ *
+ * ⚠️ 但那套写回有个**尚未治理**的毛病：它是**绝对值覆盖**，会把物品给的那份一起抹掉
+ * （`base` 是冻的，看不到石头）。已记进 `todo_next.md`，本轮不动。
+ *
+ * ## 0 就是 0，不显示 `—`
+ *
+ * `tsOnlyText` 那条「0 显示 `—`」的规矩在这里**不适用**：一个单位的每秒回复真是 0
+ * 是完全正常的事，显示 `—` 反而是在说「没有这个属性」。负数也合法（凋零类减益），
+ * 照实显示。
+ */
+function regenText(view: TargetView, native: (u: unit) => number): string {
+  return native(view.unit).toFixed(2);
+}
+
+/**
  * 「只活在属性表里」的属性能不能显示 —— 页面②③ 绝大部分走这条。
  *
  * ## ⚠️ 没表时**不是** `—`，是 `0`
  *
  * 这一点和上面 `tsOnlyText` 的处理**故意不同**，理由是两个「0」的含义不一样：
  *
- * | | 攻速 / 生命回复 / 魔法回复 | 暴击率 / 元素加成 / 穿透 / … |
+ * | | **攻速**（现在只剩它一个） | 暴击率 / 元素加成 / 穿透 / … |
  * |---|---|---|
  * | 引擎认识它吗 | 认识，单位本来就有攻速 | 完全不认识，是我们发明的 |
- * | base 快照了吗 | **没有**（`snapshotBaseFromNative` 跳过这三项） | 本来就没有原生 base |
+ * | base 快照了吗 | **没有**（写不回去，所以不接） | 本来就没有原生 base |
  * | 所以 0 表示 | 「不知道」，真值可能是一秒两下 | 「确实是 0」 |
  * | 显示 | `—` | `+0.0%` / `0` |
+ *
+ * ⚠️ **每秒回复两项原先在这张表的第一列，2026-10-06 移走了** —— 它们
+ * 既能快照又写得回去，显示的是一个真读数，不再属于「0 表示不知道」那一类
+ * （走 `regenText`，见上）。
  *
  * 而「没表 ⟹ 所有 TS 侧加成都是 0」是**结构上成立**的：属性表只在有 buff /
  * 遗物给它挂来源时才惰性建出来（见 `resolveSheet`），没表就是**一条来源都没有**。
@@ -597,6 +646,46 @@ function heroText(view: TargetView, stat: StatId, native: (u: unit) => number): 
 /** 当前值 / 上限 这种「一个框里两个数」的行 */
 function overText(current: number, max: number): string {
   return [roundText(current), " / ", roundText(max)].join("");
+}
+
+/**
+ * 当前护盾 / 护盾上限。
+ *
+ * ## 为什么这一行走的不是「有表走表」那条路
+ *
+ * 护盾是**挂在 buff 上的运行时状态**（`ShieldBuff.current` / `.max`，
+ * 由 `BuffManager.getTotalShieldCurrent()` 求和），`StatType` 里根本没有这一项 ——
+ * 所以 `pick` / `sheetNumber` 那套用不上，和「生命 / 魔法」不是同一类东西
+ * （那两项至少还有 `GetUnitState` 原生读法兜底，护盾连原生都没有）。
+ *
+ * 护盾的**唯一**来源是 `Actor.buffManager`，没有 Actor 就没有护盾。
+ *
+ * ## ⚠️ 用 `Actor.getById` 而不是 `Actor.fromHandle`
+ *
+ * `fromHandle` 的名字骗人 —— 它是**获取或创建**：查不到就 `getObject` + 补字段 +
+ * 写进 `allActors` + 发 `game:Actor:created`。面板是 0.1s 一拍的**读路径**，
+ * 拿它读一次护盾就等于「因为面板看了这个单位一眼，凭空给它建了个 Actor 并广播了
+ * 创建事件」—— 和 `resolveSheet` 那条「绝不顺手建表」的纪律是同一件事。
+ *
+ * `getById` 是纯查表，且 `detach()` 死亡时会把条目删掉，所以拿到的必然是活着的 Actor。
+ * 再比一次 `allActors[id] === actor` 是防句柄 ID 被引擎回收复用（同 `resolveSheet`）。
+ *
+ * ## 没护盾时显示 `—` 而不是 `0 / 0`
+ *
+ * 场上绝大多数单位一辈子没有护盾。`0 / 0` 会被读成「有个护盾条、现在是空的」，
+ * 而这行本就不该出现在它们的读数里。
+ */
+function shieldText(view: TargetView): string {
+  const id = GetHandleId(view.unit);
+  const actor = Actor.getById(id);
+  if (actor === undefined || Actor.allActors[id] !== actor) {
+    return DASH;
+  }
+  const max = actor.maxShield;
+  if (max <= 0) {
+    return DASH;
+  }
+  return overText(actor.shield, max);
 }
 
 /**
@@ -678,15 +767,19 @@ function xpToLevelText(u: unit): string {
 // ---------------------------------------------------------------------------
 
 /**
- * 页面① 基础属性。**正好 12 行，恰好填满内容区**。
+ * 页面① 基础属性。**15 行 > 12 个槽，底部 3 行溢出**，靠滚动把手看全。
  *
- * 「攻击速度」「生命回复」「魔法回复」被放进页面③ —— 它们是同一类东西
- * （纯 TS 侧、引擎不认识的属性，0 时显示 `—`），摆在一起才讲得通。
- * Step 4 刚加完经验两条时这里是 13 行、末尾那一行会被挤出可视区；
- * 把攻速挪走之后正好收口，不需要等 Step 7 的滚动条。
+ * 「攻击速度」「生命回复」「魔法回复」按 `todo.md` §2.1.1 属于本页，2026-10-06
+ * 从页面③搬了回来（原先它们和页面③那群「纯 TS 侧、0 显示 `—`」的属性摆在一起，
+ * 但那个归类只对攻速成立）。三条的处境并不一样：
  *
- * 也就是说**页面① 永远不该溢出** —— 它要是又超过 12 行，要么往页面②③挪，
- * 要么就是真的该等滚动条了。
+ * | | 引擎那边 | 面板显示 |
+ * |---|---|---|
+ * | 生命回复 / 魔法回复 | JAPI 可读可写 | 真值，**直读原生**（`regenText`） |
+ * | 攻击速度 | 可读可写（实测），但**先别接** | 恒 `—`（`tsOnlyText`） |
+ *
+ * 搬回来之后**溢出跟着搬了家**：页面③从 15 行回到 12 行、不再需要滚，
+ * 页面①从 12 行变成 15 行、开始需要滚。
  */
 /**
  * ⚠️ **导出只给 `src/test/StatPanelTestExample.ts` 用** —— 自测拿这张表去跑
@@ -748,8 +841,22 @@ export const BASIC_ROWS: RowSpec[] = [
     render: (v) => roundText(pick(v, StatType.BONUS_ATTACK, (u) => GetUnitState(u, UNIT_STATE_ATTACK_BONUS))),
   },
   {
+    // 攻速现在恒为 `—`（有读法、没写法），见 `tsOnlyText`
+    label: "攻击速度",
+    render: (v) => tsOnlyText(v, StatType.ATTACK_SPEED),
+  },
+  {
     label: "护甲",
     render: (v) => roundText(pick(v, StatType.ARMOR, (u) => GetUnitState(u, UNIT_STATE_DEFEND_WHITE))),
+  },
+  {
+    // 直读原生（**绕开属性表**），理由见 `regenText`
+    label: "生命回复",
+    render: (v) => regenText(v, (u) => DzGetUnitLifeRegen(u)),
+  },
+  {
+    label: "魔法回复",
+    render: (v) => regenText(v, (u) => DzGetUnitManaRegen(u)),
   },
   {
     label: "移动速度",
@@ -819,17 +926,13 @@ export const ELEMENT_ROWS: RowSpec[] = [
 // ---------------------------------------------------------------------------
 
 /**
- * 页面③ 高级属性，14 行。
+ * 页面③ 高级属性，**正好 12 行、恰好填满内容区**（原来 15 行要滚，攻速 / 回复
+ * 三项 2026-10-06 搬去页面① 之后收口 —— 溢出去那一页了，见 `BASIC_ROWS`）。
  *
- * 打头三项是**纯 TS 侧、引擎不认识**的属性，所以用 `tsOnlyText`（0 显示 `—`，
- * 因为它们的原生 base 从来没被快照过）；其余都是系数类，走 `percentText`。
- *
- * 14 行 > 12 个槽，底部 2 行溢出，同样等 Step 7。
+ * 除了「护盾」，其余全是 `percentText` 的系数类属性（0~1 表示百分比）。
+ * 「护盾」是唯一的例外：它是 buff 上的运行时状态，不是属性表里的一项，走 `shieldText`。
  */
 export const ADVANCED_ROWS: RowSpec[] = [
-  { label: "攻击速度", render: (v) => tsOnlyText(v, StatType.ATTACK_SPEED) },
-  { label: "生命回复", render: (v) => tsOnlyText(v, StatType.HP_REGEN) },
-  { label: "魔法回复", render: (v) => tsOnlyText(v, StatType.MP_REGEN) },
   { label: "暴击率", render: (v) => percentText(v, StatType.CRIT_RATE) },
   // 唯一 base 非 0 的属性，单独渲染成总倍率 —— 理由见 `critDamageText`
   { label: "暴击伤害", render: (v) => critDamageText(v) },
@@ -838,6 +941,9 @@ export const ADVANCED_ROWS: RowSpec[] = [
   { label: "护甲穿透", render: (v) => percentText(v, StatType.ARMOR_PEN) },
   { label: "元素穿透", render: (v) => percentText(v, StatType.ELEMENTAL_PEN) },
   { label: "护盾强效", render: (v) => percentText(v, StatType.SHIELD_STRENGTH) },
+  // 紧挨着「护盾强效」放：上面说的是「盾有多厚」，下面说的是「现在这个盾还剩多少」。
+  // **不走属性表**（护盾不是属性，是 buff 上的运行时状态），见 `shieldText`。
+  { label: "护盾", render: (v) => shieldText(v) },
   { label: "冷却缩减", render: (v) => percentText(v, StatType.COOLDOWN_REDUCTION) },
   { label: "韧性", render: (v) => percentText(v, StatType.TENACITY) },
   { label: "伤害擢升", render: (v) => percentText(v, StatType.DAMAGE_AMPLIFY) },
@@ -847,7 +953,7 @@ export const ADVANCED_ROWS: RowSpec[] = [
 /**
  * 三页的行全在这里，**只给自测用**（`StatPanelTestExample` 按标签查一行）。
  *
- * 自测要跨页找行 —— 比如「攻击速度」现在在页面③，只查 `BASIC_ROWS` 会查不到。
+ * 自测要跨页找行 —— 比如「暴击率」在页面③，只查 `BASIC_ROWS` 会查不到。
  * 用 `push` 拍平而不是 `...` 展开三次，避免生成物里出现意外的深嵌套。
  */
 export const ALL_ROWS: RowSpec[] = (() => {
