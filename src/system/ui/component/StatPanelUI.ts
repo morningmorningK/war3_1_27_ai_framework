@@ -132,6 +132,7 @@ import {
 } from "src/system/stat/types";
 import {
   UNIT_STATE_ATTACK_BONUS,
+  UNIT_STATE_ATTACK_SPEED,
   UNIT_STATE_ATTACK_WHITE,
   UNIT_STATE_DEFEND_WHITE,
   UNIT_STATE_LIFE,
@@ -360,11 +361,17 @@ const ROW_LABEL_COLOR = "C8C8C8";
 const ROW_VALUE_COLOR = "FFFFFF";
 
 /**
- * 「这一项现在没有值」的显示。
+ * 「这一项**对这个单位不适用**」的显示。语义是「没有这一项」，不是「值等于 0」。
  *
- * 用 `—` 而不是 `0`：`ATTACK_SPEED` / `HP_REGEN` / `MP_REGEN` 的原生 base
- * **从来没被快照过**（`StatSheet.snapshotBaseFromNative` 不设这三项），
- * 恒为 0。显示成 `0` 会被读成「每秒回复 0 点」，是错的。
+ * 现在只有两类行会用它，都是**适用性**问题，与属性表有没有值是两回事：
+ *   - 非英雄的三围 / 等级 / 经验 / 升级还需（`GetHeroStr` 对非英雄的行为无保证）
+ *     以及英雄经验表读不出差值的场合 —— 见 `heroText` / `heroXpText` / `xpToLevelText`；
+ *   - `shieldText` 里拿不到目标单位的场合。
+ *
+ * ⚠️ **原先这里写的是「`ATTACK_SPEED` / `HP_REGEN` / `MP_REGEN` 的 base 没快照过、
+ * 恒为 0、显示 `0` 会被误读」**。2026-10-06 那三行改成**直读原生**之后这条就不成立了：
+ * 它们的原生读数是真值（回复 0 也是真值），照实显示数字，**不再返回 `—`**。
+ * 见 `attackSpeedText` / `regenText`。
  */
 const DASH = "—";
 
@@ -501,30 +508,41 @@ function pick(view: TargetView, stat: StatId, native: (u: unit) => number): numb
 }
 
 /**
- * 攻速：**当前恒为 `—`**（临时状态，见下）。
+ * 攻速：`x1.26`。**和回复两项一样直读原生**，不走属性表。
  *
- * 它现在是全场唯一**没接进属性表**的原生属性。注意措辞 —— **不是写不回去**
- * （2026-10-06 实测推翻了那个说法：`SetUnitState(u, 0x51, v)` 能写且持久，
- * 见 `types.ts` 的 ⚠️），而是**先别接**：它是「引擎也会自己改」的属性
- * （敏捷增量叠在写回值之上），而现在这套「建表时快照 base、之后永不回读」的模型
- * 一写回就会把引擎那份抹掉。先治理漂移，见 `todo_next.md`。
+ * ## 为什么是 `x1.26` 而不是别的写法
  *
- * 所以这里**既不快照 base、也不挂来源** —— 建了的话只能显示一个和引擎对不上的数，
- * 等于面板撒谎。
+ * 原生槽位 `0x51` 存的是**倍率**，1.0 = 没有任何加速（2026-10-06 实测，memory
+ * `wc3-unit-state-japi-write`）：步兵读 1.000、圣骑士读 1.260（= 1 + 13 敏捷 × 0.02）。
+ * 它**不是**「每秒攻击次数」—— 步兵攻击间隔 1.35 秒，若是次/秒该读 0.74。
  *
- * 两处 `—` 的含义不同：**没表**是「还没接」；**有表但值是 0** 同样是「还没接」，
- * 不是「攻速每秒 0 次」。
+ * 直接显示 1.26 会被读成一个频率；换算成「次/秒」又要除 `0x25`（基础攻击间隔），
+ * 那是个和本行无关的量、还得改行的语义。所以照 `critDamageText` 的 `x1.50` 那套
+ * 写法显示**总倍率** —— 数值就是原生读数，一步换算都不做。
+ *
+ * ## 为什么直读原生
+ *
+ * 和 `regenText` 同一个理由：属性表的 `base[ATTACK_SPEED]` **根本没快照**
+ * （见下），`getFinal` 只会给出 0。而原生的 0x51 是引擎每时每刻都在维护的真值 ——
+ * 敏捷一涨它就涨。
+ *
+ * ## ⚠️ 显示 ≠ 接进属性系统
+ *
+ * 这行只是**把引擎已有的值显示出来**。`ATTACK_SPEED` **没有**接进 `StatSheet`：
+ * 不快照 base、没有 `writeNative` 分支、也没有任何来源能改它。
+ *
+ * 原因不是「写不回去」—— 那个说法 2026-10-06 已被实测推翻（`SetUnitState(u, 0x51, v)`
+ * 能写且持久）。而是它是「引擎也会自己改」的属性（敏捷增量**叠在**写回值之上），
+ * 而现在这套「建表时快照 base、之后永不回读」的模型一写回就会把引擎那份抹掉。
+ * 先治理漂移再接，见 `todo_next.md` 与 `types.ts` 的 ⚠️。
+ *
+ * ## 单位没有攻速时（建筑、没有武器的单位）
+ *
+ * 原生读数是 **0**，照实显示 `x0.00` —— 那是真值（它确实不出手），
+ * 不显示 `—`。这一条和 `regenText` 对 0 的处理一致。
  */
-function tsOnlyText(view: TargetView, stat: StatId): string {
-  const sheet = view.sheet;
-  if (sheet === null) {
-    return DASH;
-  }
-  const value = sheet.getFinal(stat);
-  if (value === 0) {
-    return DASH;
-  }
-  return value.toFixed(2);
+function attackSpeedText(view: TargetView): string {
+  return ["x", GetUnitState(view.unit, UNIT_STATE_ATTACK_SPEED).toFixed(2)].join("");
 }
 
 /**
@@ -555,38 +573,31 @@ function tsOnlyText(view: TargetView, stat: StatId): string {
  *
  * ## 0 就是 0，不显示 `—`
  *
- * `tsOnlyText` 那条「0 显示 `—`」的规矩在这里**不适用**：一个单位的每秒回复真是 0
- * 是完全正常的事，显示 `—` 反而是在说「没有这个属性」。负数也合法（凋零类减益），
- * 照实显示。
+ * 一个单位的每秒回复真是 0 是完全正常的事，显示 `—` 反而是在说「没有这个属性」。
+ * 负数也合法（凋零类减益），照实显示。`attackSpeedText` 对 0 也是这么处理的。
  */
 function regenText(view: TargetView, native: (u: unit) => number): string {
   return native(view.unit).toFixed(2);
 }
 
 /**
- * 「只活在属性表里」的属性能不能显示 —— 页面②③ 绝大部分走这条。
+ * 「只活在属性表里」的属性取值 —— 页面②③ 绝大部分走这条。
  *
- * ## ⚠️ 没表时**不是** `—`，是 `0`
+ * ## 没表时给 **0**，不给 `—`
  *
- * 这一点和上面 `tsOnlyText` 的处理**故意不同**，理由是两个「0」的含义不一样：
+ * 这些属性**引擎完全不认识**，是我们发明的（暴击率、元素加成、穿透、韧性……），
+ * 本来就没有原生 base。而「没表 ⟹ 所有 TS 侧加成都是 0」是**结构上成立**的：
+ * 属性表只在有 buff / 遗物给它挂来源时才惰性建出来（见 `resolveSheet`），
+ * 没表就是**一条来源都没有**。
  *
- * | | **攻速**（现在只剩它一个） | 暴击率 / 元素加成 / 穿透 / … |
- * |---|---|---|
- * | 引擎认识它吗 | 认识，单位本来就有攻速 | 完全不认识，是我们发明的 |
- * | base 快照了吗 | **没有**（写不回去，所以不接） | 本来就没有原生 base |
- * | 所以 0 表示 | 「不知道」，真值可能是一秒两下 | 「确实是 0」 |
- * | 显示 | `—` | `+0.0%` / `0` |
- *
- * ⚠️ **每秒回复两项原先在这张表的第一列，2026-10-06 移走了** —— 它们
- * 既能快照又写得回去，显示的是一个真读数，不再属于「0 表示不知道」那一类
- * （走 `regenText`，见上）。
- *
- * 而「没表 ⟹ 所有 TS 侧加成都是 0」是**结构上成立**的：属性表只在有 buff /
- * 遗物给它挂来源时才惰性建出来（见 `resolveSheet`），没表就是**一条来源都没有**。
  * 所以给没表的单位显示 `+0.0%` 是**报真值**，不是猜。
  *
  * （要是哪天这条不变式被破坏了 —— 比如有人给没表的单位挂来源却忘了建表 ——
  * 面板会显示一片 `+0.0%` 而实际有加成。到时该修的是挂载方，不是这里。）
+ *
+ * ⚠️ **原本这里是拿「攻速」当反例来对照的**（攻速引擎认识、base 没快照，
+ * 所以 0 表示「不知道」而不是「确实是 0」）。2026-10-06 攻速和每秒回复两项
+ * 都改成**直读原生**了（`attackSpeedText` / `regenText`），这张表不再有反例那一列。
  */
 function sheetNumber(view: TargetView, stat: StatId): number {
   const sheet = view.sheet;
@@ -776,7 +787,10 @@ function xpToLevelText(u: unit): string {
  * | | 引擎那边 | 面板显示 |
  * |---|---|---|
  * | 生命回复 / 魔法回复 | JAPI 可读可写 | 真值，**直读原生**（`regenText`） |
- * | 攻击速度 | 可读可写（实测），但**先别接** | 恒 `—`（`tsOnlyText`） |
+ * | 攻击速度 | 可读可写（实测），但**没接进属性表** | 真值，**直读原生**（`attackSpeedText`） |
+ *
+ * 三条都是「引擎自己也拥有、并且会改」的属性，所以都**绕开属性表**：
+ * 表的 base 是建表时的冻结快照，显示它只会给出一个和引擎对不上的数。
  *
  * 搬回来之后**溢出跟着搬了家**：页面③从 15 行回到 12 行、不再需要滚，
  * 页面①从 12 行变成 15 行、开始需要滚。
@@ -841,9 +855,9 @@ export const BASIC_ROWS: RowSpec[] = [
     render: (v) => roundText(pick(v, StatType.BONUS_ATTACK, (u) => GetUnitState(u, UNIT_STATE_ATTACK_BONUS))),
   },
   {
-    // 攻速现在恒为 `—`（有读法、没写法），见 `tsOnlyText`
+    // 直读原生（**绕开属性表**），显示倍率，理由见 `attackSpeedText`
     label: "攻击速度",
-    render: (v) => tsOnlyText(v, StatType.ATTACK_SPEED),
+    render: (v) => attackSpeedText(v),
   },
   {
     label: "护甲",

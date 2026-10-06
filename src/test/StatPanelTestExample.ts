@@ -31,6 +31,7 @@ import { ALL_ROWS } from "src/system/ui/component/StatPanelUI";
 import { DEFAULT_CRIT_DMG } from "src/system/stat/types";
 import {
   UNIT_STATE_ATTACK_BONUS,
+  UNIT_STATE_ATTACK_SPEED,
   UNIT_STATE_ATTACK_WHITE,
   UNIT_STATE_DEFEND_WHITE,
   UNIT_STATE_LIFE,
@@ -135,10 +136,12 @@ export function statPanelSelfTest(): void {
     { label: "护甲", expect: r(GetUnitState(u, UNIT_STATE_DEFEND_WHITE)) },
     { label: "移动速度", expect: r(GetUnitMoveSpeed(u)) },
 
-    // ---- 攻速：**还没接进属性表**，是全场唯一的一项 ----
-    // 没表的单位上**必须是 `—`**，显示成 `0` 会被读成「每秒攻击 0 次」
-    // （见 StatPanelUI 的 `tsOnlyText`；写回通道其实已经验证过了，只是要先治理漂移）。
-    { label: "攻击速度", expect: DASH },
+    // ---- 攻速：**倍率**，任何单位都直读 JAPI 原生（绕开属性表）----
+    // 原先是 `—`。2026-10-06 实测 `0x51` 是**倍率**（1.0 = 100%，步兵 1.000、
+    // 圣骑士 1.260 = 1 + 13 敏捷 × 0.02），不是「每秒攻击次数」——
+    // 所以显示成 `x1.26`（照 `critDamageText` 的 `x1.50` 那套写法）。
+    // 期望值这边独立再读一次原生，和面板的 `attackSpeedText` 各写各的。
+    { label: "攻击速度", expect: ["x", GetUnitState(u, UNIT_STATE_ATTACK_SPEED).toFixed(2)].join("") },
 
     // ---- 每秒回复两项：**任何单位都直读 JAPI 原生**（绕开属性表）----
     // 2026-10-06 之前这里也期望 `—`（当时以为没有原生读法），后来又一度走 `pick`

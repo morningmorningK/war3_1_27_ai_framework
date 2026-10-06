@@ -33,11 +33,6 @@ import { seedChatBoxDemo } from "./test/ChatBoxTestExample";
 import { statSelfTest } from "./test/StatSystemTestExample";
 import { statPanelSelfTest } from "./test/StatPanelTestExample";
 import { elementalDamageSelfTest } from "./test/ElementalDamageTestExample";
-// 攻速写回探针（`src/test/AttackSpeedProbe.ts`）**两段结论都拿到了，已停用**：
-// `0x51` 是攻速**倍率**（1.0 = 100%，不是次/秒）、`SetUnitState` 能写且持久、
-// 引擎会把敏捷**增量**叠加在写回值之上。要重跑就把它 import 回来。
-// TODO(每秒回复): 结论出来后连同这个 import 一起删
-import { regenProbe } from "./test/RegenProbe";
 import { StatSystem } from "./system/stat";
 import { DamagePipeline } from "./system/combat";
 import LifestealSystem from "./system/combat/LifestealSystem";
@@ -168,21 +163,12 @@ function main(): void {
     }
   });
 
-  // 攻速写回探针（一次性，见 `src/test/AttackSpeedProbe.ts`）。
-  //
-  // 排在上面那条之后：它要挑一个真实的 `Actor`，而单位是在 0.01s 那个回调里
-  // 才造出来的 —— 早于 1.5s 会一个都挑不到。**只是顺序，没有依赖**，包 try/catch。
-  // 每秒回复探针（一次性，见 `src/test/RegenProbe.ts`）。
-  //
-  // 攻速探针已停用（结论见上面那行注释），所以这里不用再错开时间。
-  // 2.5s 起、逐秒采样到 8.5s。
-  Timer.create().start(2.5, false, () => {
-    try {
-      regenProbe();
-    } catch (e) {
-      log.error(`每秒回复探针抛出异常，已隔离：${e}`);
-    }
-  });
+  // 攻速 / 每秒回复那两个一次性探针（`AttackSpeedProbe.ts` / `RegenProbe.ts`）
+  // 已于 2026-10-06 结论落档后删除，读数与推论见：
+  //   - 攻速 `0x51` 是**倍率**且可写、引擎会叠加敏捷增量 → `stat/types.ts` 的 ⚠️
+  //   - 回复是**一个原生字段**（物品/技能那份也累加在里面）、写入是绝对值覆盖
+  //     → memory `wc3-unit-state-japi-write`
+  // 两条都验完了，**不要再把它们加回来**；要复测照那段 memory 重写即可。
 
 }
 
