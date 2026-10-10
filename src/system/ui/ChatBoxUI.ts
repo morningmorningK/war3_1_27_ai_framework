@@ -1404,6 +1404,20 @@ export class ChatBoxUI {
     ChatBoxUI.push(ChatChannel.COMBAT, text);
   }
 
+  /**
+   * 战斗日志（灰），**只有本地玩家看得到**。
+   *
+   * 给「按本客户端表现算出来的」日志用 —— 目前只有伤害管线的元素反应日志。
+   * 它和 `combat()` 的区别只在收件人：`combat()` 不带 `player`，`MessageList` 就
+   * 认为所有客户端都该显示；这一条带上 `MapPlayer.fromLocal()`，
+   * 于是 `computePlayerVisible()` 只在本地玩家这一侧为真。
+   *
+   * ⚠️ **不要用它来发「所有人都该知道」的消息**（装备获取、公告）—— 那些走 `system()`。
+   */
+  public static combatToLocal(text: string): void {
+    ChatBoxUI.push(ChatChannel.COMBAT, text, MapPlayer.fromLocal());
+  }
+
   /** 警告 / 报错（红） */
   public static warn(text: string): void {
     ChatBoxUI.push(ChatChannel.WARNING, text);
@@ -1413,7 +1427,7 @@ export class ChatBoxUI {
   // 内部
   // ------------------------------------------------------------------
 
-  private static push(channel: ChatChannel, text: string): void {
+  private static push(channel: ChatChannel, text: string, player?: MapPlayer): void {
     const style = CHANNEL_STYLES[channel];
     if (style === undefined) {
       // 加了 ChatChannel 却忘了往 CHANNEL_STYLES 里补 —— 静默丢弃而不是抛异常，
@@ -1421,8 +1435,9 @@ export class ChatBoxUI {
       log.warn(`频道 ${channel} 没有配样式，消息被丢弃：${text}`);
       return;
     }
-    // 第三个参数是频道 —— 它随消息一路透传到 `MessageList`，筛选和按类淘汰都按它分组
-    Console.say(style.prefix + text, style.color, channel);
+    // 第三个参数是频道 —— 它随消息一路透传到 `MessageList`，筛选和按类淘汰都按它分组。
+    // 第四个是收件人，不传 = 所有客户端都显示（见 `combatToLocal` 的注释）。
+    Console.say(style.prefix + text, style.color, channel, player);
   }
 
   private static onPlayerChat(data: PlayerChatEventData): void {

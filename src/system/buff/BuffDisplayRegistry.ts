@@ -4,7 +4,9 @@
  */
 
 import { Buff } from "./Buff";
-import { ShieldBuff } from "./ShieldBuff";
+import { FreezeBuff } from "./FreezeBuff";
+import { ShieldBuff, ElementalShieldBuff, CRYSTAL_SAME_ELEMENT_EFFICIENCY } from "./ShieldBuff";
+import { elementalShieldCounter, SHIELD_ELEMENT_NAMES, CRYSTAL_COUNTER_CONSUMPTION } from "./ShieldRules";
 import { BuffTypeId } from "./types";
 
 export interface BuffDisplayDefinition {
@@ -51,6 +53,12 @@ export function getBuffDisplay(key: string): BuffDisplayDefinition {
 export function resolveBuffDisplay(buff: Buff): BuffDisplayDefinition {
   const key = buff.displayKey ?? buff.typeId;
   const base = registry.get(key) ?? registry.get(buff.typeId);
+  if (buff instanceof ShieldBuff && buff.sourceKind === "skill") {
+    const element = buff instanceof ElementalShieldBuff ? buff.element : "none";
+    const shieldName = element === "none" ? "无元素技能护盾" : SHIELD_ELEMENT_NAMES[element] + "元素技能护盾";
+    const skill = buff.displayKey === undefined ? undefined : registry.get(buff.displayKey);
+    return { ...(base ?? DEFAULT_UNKNOWN), name: skill === undefined ? shieldName : skill.name + "（" + shieldName + "）" };
+  }
   if (base) return base;
   return { ...DEFAULT_UNKNOWN, name: key };
 }
@@ -99,7 +107,21 @@ export function buildBuffTooltipText(buff: Buff): string {
     t += `\n\n剩余时间：永久`;
   }
   if (buff instanceof ShieldBuff) {
+    t += "\n来源：" + (buff.sourceKind === "crystallize" ? "结晶反应" : "技能");
+    t += "\n护盾元素：" + SHIELD_ELEMENT_NAMES[buff instanceof ElementalShieldBuff ? buff.element : "none"];
     t += `\n护盾：${math.floor(buff.current)} / ${math.floor(buff.max)}`;
+    if (buff instanceof ElementalShieldBuff) {
+      t += `\n当前可抵挡同元素伤害：${math.floor(buff.current * CRYSTAL_SAME_ELEMENT_EFFICIENCY)}`;
+      const counter = elementalShieldCounter(buff.element);
+      if (counter !== undefined) {
+        t += `\n按基础克制规则可挡${SHIELD_ELEMENT_NAMES[counter]}元素伤害：${math.floor(buff.current / CRYSTAL_COUNTER_CONSUMPTION)}`;
+      }
+      t += "\n触发蒸发 / 融化时，盾耗改用反应倍率（含攻击者元素精通）；不叠乘克制盾耗，溢出伤害不增幅。";
+    }
+  }
+  if (buff instanceof FreezeBuff) {
+    t += `\n剩余冻结量：${buff.gauge.toFixed(2)}U`;
+    t += "\n火攻击触发融化，雷攻击触发超导；消耗冻结量并缩短控制，耗尽后解除冻结。";
   }
   return t;
 }

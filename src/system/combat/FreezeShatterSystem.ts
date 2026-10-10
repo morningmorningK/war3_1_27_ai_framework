@@ -35,6 +35,21 @@
  * 用户口径。`UnitDamageTarget` 会触发一次**新的** `UNIT_DAMAGED` 派发，
  * 于是护甲、抗性、暴击、飘字全按正常规则走 —— 本系统一个字都不用管这些。
  *
+ * ## 冰爆的量：`实际扣血 × 0.5 × 剧变精通系数(攻击者的 EM)`
+ *
+ * 三层，缺一层就是「数字对不上但不报错」：
+ *
+ *   1. **实际扣血**（`dealt`）—— 与攻击强度挂钩，见 `ICE_SHATTER_RATIO`；
+ *   2. **剧变精通曲线** `emTransform`（**不是**增幅的 `emAmplify`）——
+ *      用户 2026-10-07 定：碎冰伤害随元素精通提升。EM=200 时 ×2.45；
+ *   3. **声明成冰元素伤害**（`registerSpellElement(..., "ice", 0, explosion)`）——
+ *      否则引擎那张攻/防类型表会把基数再削一刀（打英雄 ×0.5），
+ *      面板值与落地值差一倍。这一条与火弹/水弹踩的是同一个坑，见
+ *      `ElementalReactionSystem.PendingSpellElement.base`。
+ *
+ * 附着量传 **0**：冰已经碎了，不再挂冰附着（`gauge = 0` 就是「只声明元素、
+ * 不附着」那个模式）。
+ *
  * ## 往外只报两件事：日志 + `UNIT_SHATTERED` 事件
  *
  * 碎冰成功时 `emit(UNIT_SHATTERED)`（自建事件，定义见 `GameEvent.ts` 的
@@ -70,11 +85,16 @@ import {
   WEAPON_TYPE_WHOKNOWS,
 } from "@eiriksgata/wc3ts/*";
 import { UNIT_STATE_LIFE, UNIT_STATE_MAX_LIFE } from "src/constants/game/units";
+import { Actor } from "src/system/actor";
 import { BuffTypeId } from "src/system/buff/types";
+import { FreezeBuff } from "src/system/buff/FreezeBuff";
+import { ElementalReactionSystem } from "src/system/element/ElementalReactionSystem";
+import { emTransform } from "src/system/element/reactionTable";
 import { GameEventType, gameEvents } from "src/system/event";
 import { UnitDamageEventData } from "src/system/event/GameEvent";
+import { StatType } from "src/system/stat";
 import { createLogger } from "src/utils/logger";
-import { restoreDamageContext, saveDamageContext } from "./DamageContext";
+import { findDamageContext, restoreDamageContext, saveDamageContext } from "./DamageContext";
 
 const log = createLogger("FreezeShatter");
 
@@ -149,7 +169,8 @@ export default class FreezeShatterSystem {
 
     // `getBuffsByType` 内部是 `filter`，**返回的就是一份新数组** ——
     // 可以在下面边遍历边 `removeBuff`，不会踩到「遍历中列表变化」。
-    const frozen = target.buffManager.getBuffsByType(BuffTypeId.FREEZE);
+    const frozen = target.buffManager.getBuffsByType(BuffTypeId.FREEZE).filter(buff =>
+      buff instanceof FreezeBuff && !buff.isExpired());
     if (frozen.length === 0) {
       // **常见的正常路径**（绝大多数伤害打在没冻的单位上），也是冰爆递归的终止条件
       return;
@@ -185,6 +206,8 @@ export default class FreezeShatterSystem {
     //     之后才轮到冰爆那串数字、以及这一刀本身的数字 —— 用户要求的
     //     「碎冰字样在伤害数字之前」就是靠这个发射顺序 + 飘字起点高一档实现的
     //     （见 `DamageNumberDisplay.onUnitShattered`）。
+    const ctx = findDamageContext(data);
+    if (ctx !== undefined) ctx.shattered = true;
     gameEvents.emit(GameEventType.UNIT_SHATTERED, {
       Actor: target,
       unitTypeId: GetUnitTypeId(u),
@@ -205,7 +228,26 @@ export default class FreezeShatterSystem {
       return;
     }
 
-    const explosion = dealt * ICE_SHATTER_RATIO;
+    const explosion = dealt * ICE_SHATTER_RATIO * FreezeShatterSystem_masteryFactor(source);
+
+    // ⚠️ **声明「这一段是冰元素伤害」，基数就是 `explosion`**。
+    //
+    // 少了这一行，冰爆会退化成一发「未分类的原生伤害」—— 引擎那张攻/防类型表
+    // （magic 攻击 vs 英雄护甲 ×0.5）会插在中间，**面板打出的数与敌人实际掉的血
+    // 差一倍**，而且日志里那个「冰爆=」是假的。这与火弹/水弹踩过的是同一个坑，
+    // 口径也照抄它们：元素伤害自成一套，基数以声明值为准（见
+    // `PendingSpellElement.base`）。
+    //
+    // ⚠️ 附着量传 **0** —— 冻结已经把附着吃干净了，「冰碎了」不该再挂一层冰。
+    // `resolve()` 对 `gauge <= 0` 本来就是「不附着、不反应」的早退，
+    // 所以 0 天然就是「只声明元素、不附着」那一个模式。
+    ElementalReactionSystem.getInstance().registerSpellElement(
+      source.id,
+      target.id,
+      "ice",
+      0,
+      explosion
+    );
 
     // ⚠️ **存 → 造 → 还原**：包住这一次嵌套派发，别让内层覆写掉外层的
     // `lastDamageContext`（外层飘字会因此退化成单色）。完整理由见
@@ -225,10 +267,39 @@ export default class FreezeShatterSystem {
 
     // 打**实际扣血**与**冰爆量**两个数：前者是「碎冰判据算对了没有」的读数，
     // 后者是「冰爆接上了没有」的读数。只打其中一个的话，另一个只能靠猜。
+    // `explosion` 是**结算基数**（还没过元素加成/抗性/免伤），落地值看飘字。
     log.info(
-      "碎冰：实际扣血=" + dealt + " 冰爆=" + explosion + "（" + frozen.length + " 层冻结）"
+      "碎冰：实际扣血=" + dealt + " 冰爆基数=" + explosion + "（" + frozen.length + " 层冻结）"
     );
   }
+}
+
+/**
+ * 碎冰的元素精通系数：读**打碎冰的那个攻击者**的 `ELEMENTAL_MASTERY`，走**剧变**曲线。
+ *
+ * ## 为什么是剧变曲线
+ *
+ * 冻结属剧变一侧的反应（冰被打碎与超载同类），原神口径下剧变用
+ * `1 + 16·EM/(EM+2000)`，比增幅的 `1 + 2.78·EM/(EM+1400)` 陡得多
+ * （EM=200 时 2.45 vs 1.35）。用错的那条不会崩，只是数值差两三倍 ——
+ * 两条曲线各自有断言钉死（`ElementalReactionTestExample`）。
+ *
+ * ## 读**攻击者**的表，不是受害者的
+ *
+ * 与 `DamagePipeline` 的口径一致：元素加成/暴击/精通都是**攻击方**的属性
+ * （只有八个元素抗性与全局免伤读受击方）。
+ *
+ * ## 没有属性表 → `1`（= 没有精通）
+ *
+ * ⚠️ **必须先 `hasStatSheet()` 再取 `statSheet`** —— 那个 getter 是**惰性建表**的，
+ * 直接取等于在一个（可能已经 `detach` 的）句柄上重建一张表。
+ * 语义上也说得通：没有属性表 = 没有任何属性修正 = 精通为 0 = 恒等。
+ */
+function FreezeShatterSystem_masteryFactor(source: Actor): number {
+  if (!source.hasStatSheet()) {
+    return 1;
+  }
+  return emTransform(source.statSheet.getFinal(StatType.ELEMENTAL_MASTERY));
 }
 
 /**

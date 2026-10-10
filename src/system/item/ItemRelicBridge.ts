@@ -64,6 +64,8 @@ const BINDINGS: ItemRelicBinding[] = [
   { itemTypeId: FourCC("I002"), relicId: "time_hourglass", label: "时之沙漏" },
   { itemTypeId: FourCC("I003"), relicId: "shield_amulet", label: "守护护符" },
   { itemTypeId: FourCC("I004"), relicId: "tenacity_charm", label: "坚定护符" },
+  { itemTypeId: FourCC("I005"), relicId: "haste_glove", label: "加速手套" },
+  { itemTypeId: FourCC("I006"), relicId: "arcane_codex", label: "元素秘典" },
 ];
 
 let bound = false;

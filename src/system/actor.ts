@@ -4,6 +4,8 @@ import { BuffManager } from "./buff/BuffManager";
 import { BUFF_DURATION_PERMANENT } from "./buff/types";
 import { eventBus } from "./event/EventBus";
 import { StatSheet } from "./stat/StatSheet";
+import type { ShieldEffectStyle } from "./buff/ShieldEffects";
+import type { ShieldElement } from "./buff/ShieldRules";
 
 // TSTL/Lua 全局：用于把缓存的 Unit 实例“升级”为 Actor（修复方法为 nil 的问题）
 declare const setmetatable: (t: unknown, mt: unknown) => unknown;
@@ -199,8 +201,12 @@ export class Actor extends Unit {
    * （见 `ensureActorFields`），构造函数根本不会执行；而且绝大多数单位
    * 直到被打死也用不上属性表，提前建 43 项 × 3 个数组是白花的。
    *
-   * 快照只做一次。之后 `base` 绝不回读原生 —— 否则写回 final 会污染 base，
-   * 每次重算翻倍（见 `StatSheet` 文件头边界 2）。
+   * 快照只做一次。之后 `base` 不再整体回读原生 —— 否则写回 final 会污染 base，
+   * 每次重算翻倍（见 `StatSheet` 文件头边界 2）。引擎后来自己改的那部分走
+   * `StatSheet.foldNativeDrift()` 按**增量**折算，不是重新快照。
+   *
+   * ⚠️ 因此 `base` **不是**「建表那一刻的常量」——`getBase()` 要基准就现取，
+   * 别缓存起来跨帧复用。
    */
   public get statSheet(): StatSheet {
     if (this._statSheet === null) {
@@ -248,13 +254,21 @@ export class Actor extends Unit {
   public addShield(
     delta: number,
     duration: number = BUFF_DURATION_PERMANENT,
-    displayKey?: string
+    displayKey?: string,
+    effectStyle?: ShieldEffectStyle,
+    element?: ShieldElement
   ): void {
     if (delta > 0) {
-      this.buffManager.addShieldBuff(delta, duration, displayKey);
+      this.buffManager.addShieldBuff(delta, duration, displayKey, effectStyle, element);
     } else if (delta < 0) {
       this.buffManager.reduceShield(-delta);
     }
+  }
+
+  /** 创建技能护盾。元素决定承伤、反应与外观；none 创建普通银白护盾。 */
+  public addElementalShield(amount: number, element: ShieldElement,
+    duration: number = BUFF_DURATION_PERMANENT, displayKey?: string): void {
+    if (amount > 0) this.buffManager.addShieldBuff(amount, duration, displayKey, undefined, element);
   }
 
   /**

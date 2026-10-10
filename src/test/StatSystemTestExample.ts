@@ -7,6 +7,8 @@
  * 本文件覆盖的是**纯计算内核**（Step 1）：
  *   ① 公式与顺序   ② 上限钳制   ③ 暴击率溢出转暴伤   ⑦ 同源替换不叠加   ⑧ 事件只在变化时发
  * 原生写回（④）、Buff 泄漏回归（⑤）、圣遗物集成（⑥）要等 Step 2~4 接线之后再补。
+ * 漂移折算（⑨，`StatSheet.foldNativeDrift`）、攻速接线（⑩）、写回顺序（⑪）需要英雄单位，
+ * 挑不到就跳过。
  *
  * 由 `main.ts` 的调试入口 `main()` 调用（只在 debug 模式跑）。
  */
@@ -20,6 +22,7 @@ import { Buff } from "src/system/buff/Buff";
 import { BUFF_DURATION_PERMANENT } from "src/system/buff/types";
 import { RelicSystem } from "src/system/relic/RelicSystem";
 import {
+  UNIT_STATE_ATTACK_SPEED,
   UNIT_STATE_DEFEND_WHITE,
   UNIT_STATE_LIFE,
   UNIT_STATE_MAX_LIFE,
@@ -28,6 +31,9 @@ import {
 import {
   DEFAULT_CRIT_DMG,
   ELEMENTS,
+  ELEM_RES_BASE,
+  ELEM_VULN_BASE,
+  STAT_COUNT,
   StatChangedPayload,
   StatId,
   STAT_EVENT_CHANGED,
@@ -37,8 +43,10 @@ import {
   StatSheetHost,
   StatSourceKind,
   StatType,
+  clampFinal,
   elemDamageStat,
   elemResistStat,
+  elemVulnStat,
   statName,
 } from "src/system/stat";
 
@@ -273,6 +281,42 @@ function testElementBlocks(): void {
   s.setSource("t:fire", [mod(elemDamageStat("fire"), StatModKind.FLAT, 0.35)]);
   check("火元素伤害加成 +0.35", 0.35, s.getFinal(elemDamageStat("fire")));
   check("火抗性不受影响（两块独立）", 0, s.getFinal(elemResistStat("fire")));
+
+  // ---- 元素易伤块（43..50，2026-10-08 为「激化」新开）----
+  // ⚠️ 这三块是**连着**的：27..34 / 35..42 / 43..50，边界差一个数就会串味
+  check("元素易伤块基址（35+8）", 43, ELEM_VULN_BASE);
+  check("抗性块基址（27+8）", 35, ELEM_RES_BASE);
+  check("属性总数 51（27 + 8×3）", 51, STAT_COUNT);
+  check("物理易伤 id（43+0）", 43, elemVulnStat("physical"));
+  check("雷易伤 id（43+3）", 46, elemVulnStat("thunder"));
+  check("草易伤 id（43+7）", 50, elemVulnStat("grass"));
+
+  // ⚠️ 这一条是本轮最隐蔽的坑：`statName` 的抗性分支原来上界写的是 `STAT_COUNT`，
+  // 易伤块一加进来，那 8 格（43..50）就会被当成抗性、在日志里显示成 `thunder_res`。
+  // 边界必须收成 `ELEM_VULN_BASE`（`types.ts` 已改），这里钉死它不再漂。
+  checkText("雷易伤名字是 thunder_vuln（不是 thunder_res）", "thunder_vuln", statName(elemVulnStat("thunder")));
+  checkText("草易伤名字是 grass_vuln", "grass_vuln", statName(elemVulnStat("grass")));
+  checkText("物理易伤名字是 physical_vuln", "physical_vuln", statName(elemVulnStat("physical")));
+  // 抗性那一段仍然报 `_res`（收边界时别把它一起收窄了）
+  checkText("抗性那一段没被误伤", "thunder_res", statName(elemResistStat("thunder")));
+
+  // ⚠️ 易伤钳 ≥ 0：负数会变成「元素减伤」，与抗性语义重叠
+  check("易伤 -0.5 被钳到 0", 0, clampFinal(elemVulnStat("fire"), -0.5));
+  check("易伤 0.3 原样保留", 0.3, clampFinal(elemVulnStat("fire"), 0.3));
+  // 抗性**不**钳（它有自己的 `effectiveElementResist` 钳制，在伤害管线那一层）
+  check("抗性 -0.5 在 clampFinal 里原样透传", -0.5, clampFinal(elemResistStat("fire"), -0.5));
+
+  // 易伤块能真的参与计算，且与另两块互不干扰
+  const s2 = new StatSheet(fakeHost(10));
+  s2.setSource("t:vuln", [mod(elemVulnStat("grass"), StatModKind.FLAT, 0.2)]);
+  check("草易伤 +0.2", 0.2, s2.getFinal(elemVulnStat("grass")));
+  check("草抗性不受影响（三块独立）", 0, s2.getFinal(elemResistStat("grass")));
+  check("草伤害加成不受影响", 0, s2.getFinal(elemDamageStat("grass")));
+  // 同一个元素的三格必须是三个不同的 id —— 撞了就是「挂易伤结果改了抗性」
+  checkBool("同元素三格互不相同", true,
+    elemDamageStat("grass") !== elemResistStat("grass") &&
+    elemResistStat("grass") !== elemVulnStat("grass") &&
+    elemVulnStat("grass") !== elemDamageStat("grass"));
 }
 
 // ==================== ④ 原生写回（异步） ====================
@@ -335,6 +379,13 @@ function testNativeWriteback(): void {
   // 第一次访问 statSheet = 惰性建表 + 从原生快照一次 base
   const sheet = actor.statSheet;
 
+  // 这两个基准值下面会被**跨 `defer` 复用**（共 3 拍、约 0.6s）。`base` 现在不再是
+  // 「冻死的快照」——`StatSheet.foldNativeDrift()` 会按漂移改它 —— 所以每个拍点都要
+  // 显式验一下它没动，不能假设（下面两处 `base[...] 没有漂移`）。
+  //
+  // 这两个槽位**在** `DRIFT_SLOTS` 里（引擎对它们做的是加法），但这 0.3s 里既没升级
+  // 也没换装、三围没动，引擎那份增量为零 —— 所以这两条其实是在验
+  // **「折算不会自己造出漂移」**：名单放对了、写后读回也稳，就不该有假漂移。
   const baseMax = sheet.getBase(StatType.MAX_LIFE);
   const baseArmor = sheet.getBase(StatType.ARMOR);
 
@@ -364,6 +415,10 @@ function testNativeWriteback(): void {
       return;
     }
 
+    // 先验「基准没漂」，否则下面两条拿旧基准比就说不清了
+    check("0.3s 期间 base[MAX_LIFE] 没有漂移", baseMax, sheet.getBase(StatType.MAX_LIFE));
+    check("0.3s 期间 base[ARMOR] 没有漂移", baseArmor, sheet.getBase(StatType.ARMOR));
+
     check("0.3s 后原生 MAX_LIFE 已写回", baseMax + 100, GetUnitState(u, UNIT_STATE_MAX_LIFE));
     check("0.3s 后原生 ARMOR 已写回", baseArmor + 7, GetUnitState(u, UNIT_STATE_DEFEND_WHITE));
 
@@ -378,6 +433,9 @@ function testNativeWriteback(): void {
         return;
       }
 
+      check("0.6s 期间 base[MAX_LIFE] 没有漂移", baseMax, sheet.getBase(StatType.MAX_LIFE));
+      check("0.6s 期间 base[ARMOR] 没有漂移", baseArmor, sheet.getBase(StatType.ARMOR));
+
       check("摘除后原生 MAX_LIFE 还原", baseMax, GetUnitState(u, UNIT_STATE_MAX_LIFE));
       check("摘除后原生 ARMOR 还原", baseArmor, GetUnitState(u, UNIT_STATE_DEFEND_WHITE));
 
@@ -386,7 +444,16 @@ function testNativeWriteback(): void {
       testBuffLeakRegression(actor);
       testRelicIntegration(actor);
 
-      reportTotal();
+      // 第 ⑨ / ⑩ 组要挑的是**英雄**（三围、攻速都只有英雄身上才有意义），
+      // 可能不是这个单位。它们自带全部前置与还原，跑不跑得了都在内部说清楚。
+      testDriftFold();
+
+      // 第 ⑩ / ⑪ 组都要动三围（敏捷）—— **必须排在 ⑨ 之后**：⑨ 用的是力量，
+      // 两者互不干扰，但都改三围 → 引擎会重算派生槽位，串行起来读数干净。
+      //
+      // ⚠️ 它们都是**异步**的，**末尾自己调 `reportTotal()`** —— 链尾在 ⑪，
+      // 在这里再打一次会把总数报两遍、而且第一遍漏掉它们那几条。
+      testAttackSpeed();
     });
   });
 }
@@ -522,4 +589,350 @@ function testRelicIntegration(actor: Actor): void {
   check("移除后：护甲归位", baseArmor, sheet.getFinal(StatType.ARMOR));
   check("移除后：来源归位（遗物也要摘干净）", src0, sheet.sourceCount());
   checkBool("移除后：hasRelic 为假", false, sys.hasRelic(actor, "iron_plate"));
+}
+
+// ==================== ⑨ 漂移折算（引擎在背后改的那份） ====================
+
+/** 从场上挑一个**本地玩家的英雄**。漂移折算本轮只放三围，而三围只有英雄有 */
+function pickHeroActor(): Actor | undefined {
+  for (const key in Actor.allActors) {
+    const a = Actor.allActors[key];
+    if (a === undefined) continue;
+    if (!stillValid(a.handle)) continue;
+    if (!IsUnitType(a.handle, UNIT_TYPE_HERO)) continue;
+    return a;
+  }
+  return undefined;
+}
+
+/**
+ * 第 ⑨ 组：**引擎在属性表背后改了原生值，冲刷一拍应该把它「吸收」进 base，
+ * 而不是写回成旧值把它抹掉。**
+ *
+ * 这是 `StatSheet.foldNativeDrift()` 的验收。改造前这一组里每一条都必红 ——
+ * 那段 `+5`（模拟引擎升级 / 光环 / 换装）会被写回成 `base + 来源` 直接抹平，
+ * 而且**不报错**。
+ *
+ * 全程**同步**（`setSource` 标脏 + 手动 `flush()`）：走 `scheduler.defer` 的话，
+ * 0.1s 的冲刷拍可能抢在前面把漂移折掉，那就变成在测 `StatSystem` 的定时器了。
+ *
+ * ⚠️ 断言全部用**相对量**，不假设这个英雄身上是空的 —— 它多半挂着别处的来源
+ * （`final = base + 那些来源`），所以对账的是「原生与 final 自洽」而不是裸值。
+ */
+function testDriftFold(): void {
+  const actor = pickHeroActor();
+  if (actor === undefined) {
+    // **不算失败**：测试地图里没有英雄是布景问题，不是属性系统的回归。
+    log.warn("--- 第 ⑨ 组（漂移折算）跳过：场上找不到英雄（三围是英雄专有）---");
+    return;
+  }
+
+  const u = actor.handle;
+  const sheet = actor.statSheet;
+  const STR = StatType.STRENGTH;
+  const KEY = "selftest:drift";
+
+  const nativeBefore = GetHeroStr(u, false);
+  const baseBefore = sheet.getBase(STR);
+  const src0 = sheet.sourceCount();
+
+  // 前置：表得是跟原生同步的，不然下面的算术没意义
+  check("漂移：前置（final 与原生同步）", nativeBefore, sheet.getFinal(STR));
+
+  // ① 在背后写一次 —— 模拟引擎自己加了三围（升级 / 光环 / 换装）
+  const injected = nativeBefore + 5;
+  SetHeroStr(u, injected, true);
+  check("漂移：背后写入已落到原生", injected, GetHeroStr(u, false));
+
+  sheet.setSource(KEY, []); // 空来源：只标脏，不改 final
+  sheet.flush();
+
+  check("漂移：+5 被吸收，原生没被抹掉", injected, GetHeroStr(u, false));
+  check("漂移：base 吸收了 +5", baseBefore + 5, sheet.getBase(STR));
+  check("漂移：final 与原生自洽", GetHeroStr(u, false), sheet.getFinal(STR));
+
+  // ② 再冲一拍：不该双计
+  sheet.setSource(KEY, []);
+  sheet.flush();
+  check("漂移：第二拍不双计（原生）", injected, GetHeroStr(u, false));
+  check("漂移：第二拍 base 不再涨", baseBefore + 5, sheet.getBase(STR));
+
+  // ③ 撤掉那次外部写入 → 冲刷 → 不该留残留（增量形式才有的对称性）
+  SetHeroStr(u, nativeBefore, true);
+  sheet.setSource(KEY, []);
+  sheet.flush();
+  sheet.removeSource(KEY);
+
+  check("漂移：撤销后原生归位", nativeBefore, GetHeroStr(u, false));
+  check("漂移：撤销后 base 归位（无残留）", baseBefore, sheet.getBase(STR));
+  check("漂移：本组来源已摘干净", src0, sheet.sourceCount());
+}
+
+// ==================== ⑩ 攻速（ATTACK_SPEED 接线） ====================
+
+/**
+ * 第 ⑩ 组：攻速接线（2026-10-07）。
+ *
+ * 两件要证的事，**顺序不能换**：
+ *
+ *   ① **来源真的落得到原生** —— 攻速以前是「面板看得见、但没有任何来源能改它」，
+ *      这一条是那个能力的验收（memory `wc3-zero-base-stat-invisible`：没有来源的
+ *      属性写完了游戏里毫无反应）。
+ *   ② **写回不会抹掉引擎叠的敏捷增量** —— 攻速是「不折就必坏」的槽位：引擎把写回值
+ *      当初值、再按当前敏捷重算，每写回一次就把那时的敏捷项固化一次（见 `DRIFT_SLOTS`）。
+ *
+ * ② 仍然放在**来源摘掉之后**（顺序照旧），但理由变了：来源用的是 `FLAT`，
+ * 而 `FLAT` 是加法、**不会**放大敏捷那份成长 —— 所以这一步现在只是让两条观察各自独立
+ * （① 断言绝对值、② 断言增量），不再是「不摘就会读到 0.3 而不是 0.2」的必答题。
+ * 哪天有人把这里改回 `PERCENT`，那个理由才重新成立。
+ *
+ * ## ① 同步、② 异步 —— 这个不对称是故意的
+ *
+ * ① 是「我们写 → 我们立刻读」，读写是同一个原生槽位，同步成立（第 ⑨ 组同理）。
+ * ② 是「**引擎**自己把敏捷重算到派生槽位上」，**不能假设它对 `SetHeroAgi` 是同步反应**
+ * （探针那轮是 `SetHeroAgi` 之后等 2 秒才读 0x51 的）。所以 ② 只标脏、然后放手，
+ * 让 `StatSystem` 那 0.1s 的冲刷拍自己去折 —— 顺带比手动 `flush()` 更接近生产路径。
+ *
+ * 等待的 0.3s 里那台定时器会跑三四拍，所以「原生只涨了 0.2」这一条同时也就验了
+ * **不双计**（双计的话会涨成 0.4 / 0.6），不必再单开一条。
+ *
+ * ⚠️ 本组**不再**是链尾：⑪ 接在它后面。下面三个出口都改成调 `testCouplingOrder()`，
+ * `reportTotal()` 由 ⑪ 收（每个出口自己调一次）—— 在这里打会漏掉 ⑪ 那几条。
+ */
+function testAttackSpeed(): void {
+  const actor = pickHeroActor();
+  if (actor === undefined) {
+    log.warn("--- 第 ⑩ 组（攻速）跳过：场上找不到英雄 ---");
+    testCouplingOrder();
+    return;
+  }
+
+  const u = actor.handle;
+  const sheet = actor.statSheet;
+  // ⚠️ 两个 `AS` 别混：`AS_STAT` 是属性表的下标，`AS_STATE` 是原生 `unitstate` 常量
+  const AS_STAT = StatType.ATTACK_SPEED;
+  const AS_STATE = UNIT_STATE_ATTACK_SPEED;
+  const KEY = "selftest:attack_speed";
+
+  // ⚠️ `src0` 必须在挂本组那条来源**之前**取 —— 取晚了（挂完再取）末尾的
+  // 「摘干净」就会拿「+1」去比「0」，恒红一条。第 ⑨ 组也是这么取的。
+  const src0 = sheet.sourceCount();
+
+  // 先空拍一次：把「引擎攒下、还没折进来」的那部分先落定（英雄可能刚升过级，
+  // 而升级自己标不了脏就不折 —— 见 `flush()` 的早退）。
+  sheet.setSource(KEY, []);
+  sheet.flush();
+
+  const baseBefore = sheet.getBase(AS_STAT);
+  const agi0 = GetHeroAgi(u, false);
+
+  check("攻速：前置（base 与原生同步）", baseBefore, GetUnitState(u, AS_STATE));
+
+  // ---- ① 来源落到原生（同步） ----
+  // 用 `FLAT` 而不是 `PERCENT`：加攻速的来源**只有**这一种写法（见 `types.ts` 的 ⚠️ 段
+  // 与 `hasteGlove.ts`）—— 魔兽的攻速加成是加进 `1 + 0.02×敏捷 + Σ加成` 那个区，
+  // 乘在 base 上不是原生语义。本组验的是接线通不通，两种写法都能通，
+  // 但**不能**在仓库里留一个会被照抄的反例。
+  sheet.setSource(KEY, [mod(AS_STAT, StatModKind.FLAT, 0.5)]);
+  sheet.flush();
+  check("攻速：+0.5 倍率落到原生", baseBefore + 0.5, GetUnitState(u, AS_STATE));
+
+  sheet.removeSource(KEY);
+  sheet.flush();
+  check("攻速：摘掉来源后原生归位", baseBefore, GetUnitState(u, AS_STATE));
+
+  // ---- ② 敏捷成长不被写回抹掉（异步：交给冲刷拍） ----
+  const nativeBefore = GetUnitState(u, AS_STATE);
+
+  SetHeroAgi(u, agi0 + 10, true); // 引擎侧：模拟升级
+  sheet.setSource(KEY, []); // 只标脏，不手动 flush
+
+  scheduler.defer(WRITEBACK_WAIT, () => {
+    if (!stillValid(u)) {
+      checkBool("攻速：0.3s 后英雄仍存活", true, false);
+      testCouplingOrder();
+      return;
+    }
+    check("攻速：敏捷 +10 的 0.2 被吸收，原生没被抹掉", nativeBefore + 0.2, GetUnitState(u, AS_STATE));
+    check("攻速：base 吸收了 +0.2", baseBefore + 0.2, sheet.getBase(AS_STAT));
+    check("攻速：final 与原生自洽", GetUnitState(u, AS_STATE), sheet.getFinal(AS_STAT));
+
+    // 撤销外部写入 → 再等一拍（这一侧同样是引擎在动）→ 不该留残留
+    SetHeroAgi(u, agi0, true);
+    sheet.setSource(KEY, []);
+
+    scheduler.defer(WRITEBACK_WAIT, () => {
+      sheet.removeSource(KEY);
+      check("攻速：撤销后原生归位", nativeBefore, GetUnitState(u, AS_STATE));
+      check("攻速：撤销后 base 归位（无残留）", baseBefore, sheet.getBase(AS_STAT));
+      check("攻速：本组来源已摘干净", src0, sheet.sourceCount());
+      testCouplingOrder();
+    });
+  });
+}
+
+// ==================== ⑪ 写回顺序（同拍改三围 + 派生槽位） ====================
+
+/**
+ * 等**引擎自己的帧** —— 比 `WRITEBACK_WAIT` 宽得多。
+ *
+ * `WRITEBACK_WAIT` 等的是我们自己的 0.1s 冲刷拍；本组等的却是「引擎把敏捷重算到
+ * 护甲上」这件事，而它可能滞后于我们那次写入（探针那轮对攻速就是 `SetHeroAgi`
+ * 之后**等 2 秒**才读）。给足余量，否则「引擎慢」会被误读成「引擎那份丢了」。
+ */
+const ENGINE_SETTLE_WAIT = 1.0;
+
+/**
+ * 本组往护甲上加的那一点。
+ *
+ * **它不是陪衬**：写回循环只在 `final !== lastSynced` 时才写，护甲的 `final` 不变就
+ * 根本不会写，也就盖不掉引擎那份 —— 这条差值正是用来触发「同一拍写护甲」的。
+ */
+const COUPLING_ARMOR_GAIN = 1;
+
+/** 本组往敏捷上加的点数。引擎那份约 `0.3×10 = 3`，和上面那 1 点拉开距离 */
+const COUPLING_AGI_GAIN = 10;
+
+/**
+ * 判据阈值：原生护甲涨过这个数才算「引擎那份还在」。
+ *
+ * 两个候选值 —— 只有我们那份（`1`）与含引擎那份（约 `1 + 3 = 4`）—— 相隔 3.0，
+ * 取 2.0 两边都有大余量。**不硬编码 `0.3`**：实测值打进日志，万一系数不是 0.3
+ * 看数字就知道（那时判据要重订）。
+ */
+const COUPLING_ENGINE_KEPT = 2.0;
+
+/**
+ * 第 ⑪ 组：**同一拍里既改三围、又改一个由三围派生的槽位**时，引擎因三围变化叠上去的
+ * 那份会不会被我们紧随的写回盖掉。
+ *
+ * ## 为什么这条要单独测
+ *
+ * `flush()` 按下标升序写，于是 `AGILITY(6)` 先于 `ARMOR(11)`。「敏捷 +1 → 护甲 +0.3」
+ * 是常识、也早实测过（`DRIFT_SLOTS` 表里那句「偏高值 58.5 后敏捷 +10 读 61.5」），
+ * **但引擎在什么时刻把这份加上去，没人量过**：
+ *
+ *   - 若在 `SetHeroAgi` 那一次调用里**当场**就加 → 我们紧接着写护甲的那一笔会把它盖掉，
+ *     而 `lastSynced` 记的正是我们写进去的值（**不是漂移**）→ 下一拍的折算也看不见
+ *     → **永久丢失**。
+ *   - 若引擎等自己下一帧才算 → 同拍写护甲时它还没加，它加的时候是叠在我们写的值上
+ *     → **顺序根本无所谓，这条就是空测**。
+ *
+ * `todo_next.md` 里那条是**推断**出来的，没实测校正过（原文自己还标着「⚠️ 这条原先的
+ * 『修法』写反了」）。所以先测：**红 = 确认存在，绿 = 推翻那条推断**。
+ *
+ * ## 为什么两个 `setSource` 之间不能有 `flush()`
+ *
+ * `StatSystem` 是 0.1s 定时器，同步块内插不进来。中间只要冲一次，两者就落到两拍上，
+ * 这条就白测了。下面那条前置断言就是在钉死这一点。
+ *
+ * ## 与本组无关的一条已知性质
+ *
+ * 「只改三围」的那一拍**不会**写派生槽位（`final === lastSynced`），引擎那份会作为漂移
+ * 在下一拍被 `foldNativeDrift()` 折回 —— 所以**普通升级路径本来就是安全的**，这一组
+ * 覆盖的是更窄的那一种：同一拍里两者都变。
+ *
+ * ⚠️ 本组是**链尾**：`reportTotal()` 由它收尾（每个出口都要调）。
+ */
+function testCouplingOrder(): void {
+  const actor = pickHeroActor();
+  if (actor === undefined) {
+    log.warn("--- 第 ⑪ 组（写回顺序）跳过：场上找不到英雄 ---");
+    reportTotal();
+    return;
+  }
+
+  const u = actor.handle;
+  const sheet = actor.statSheet;
+  const AGI_STAT = StatType.AGILITY;
+  const ARM_STAT = StatType.ARMOR;
+  const KEY_AGI = "selftest:coupling_agi";
+  const KEY_ARM = "selftest:coupling_armor";
+  /** 清场阶段用来反复标脏的空来源（本身不加任何东西） */
+  const KEY_DIRTY = "selftest:coupling_dirty";
+
+  // ⚠️ `src0` 必须在挂本组任何来源**之前**取（第 ⑨/⑩ 组同理，取晚了末尾恒红一条）。
+  const src0 = sheet.sourceCount();
+  const agi0 = GetHeroAgi(u, false);
+
+  // 先空拍一次：⑩ 结尾那次 `removeSource` 的 fold/写回还没发生就同步进了本组。
+  sheet.setSource(KEY_AGI, []);
+  sheet.setSource(KEY_ARM, []);
+  sheet.flush();
+
+  const armor0 = GetUnitState(u, UNIT_STATE_DEFEND_WHITE);
+  check("写回顺序：前置（表与原生自洽）", armor0, sheet.getFinal(ARM_STAT));
+
+  // ---- 同一拍里同时改三围和派生槽位 ----
+  sheet.setSource(KEY_AGI, [mod(AGI_STAT, StatModKind.FLAT, COUPLING_AGI_GAIN)]);
+  sheet.setSource(KEY_ARM, [mod(ARM_STAT, StatModKind.FLAT, COUPLING_ARMOR_GAIN)]);
+
+  // 前置：来源真的改了 `final`。不成立的话敏捷那一笔根本不会写，「同一拍」就是空的，
+  // 这条会**静默变成空测** —— 所以必须报红，不能放过去。
+  check(
+    "写回顺序：前置（来源确实抬了 final）",
+    COUPLING_AGI_GAIN,
+    sheet.getFinal(AGI_STAT) - sheet.getBase(AGI_STAT)
+  );
+
+  scheduler.defer(WRITEBACK_WAIT, () => {
+    if (!stillValid(u)) {
+      checkBool("写回顺序：0.3s 后英雄仍存活", true, false);
+      reportTotal();
+      return;
+    }
+    // 0.3s 处先看一眼它在不在动 —— 读数是给「引擎慢 / 引擎快」留现场证据的
+    log.info(
+      "写回顺序：0.3s 处护甲涨了 " +
+        (GetUnitState(u, UNIT_STATE_DEFEND_WHITE) - armor0).toFixed(3)
+    );
+
+    scheduler.defer(ENGINE_SETTLE_WAIT, () => {
+      if (!stillValid(u)) {
+        checkBool("写回顺序：1.3s 后英雄仍存活", true, false);
+        reportTotal();
+        return;
+      }
+
+      const grown = GetUnitState(u, UNIT_STATE_DEFEND_WHITE) - armor0;
+      // 实测值打进日志 —— 万一引擎那条系数不是 0.3，看这个数就知道判据要不要重订
+      log.info(
+        "写回顺序：1.3s 处护甲共涨 " +
+          grown.toFixed(3) +
+          "（我们加的是 " +
+          COUPLING_ARMOR_GAIN +
+          "，引擎那份约 " +
+          (COUPLING_AGI_GAIN * 0.3).toFixed(1) +
+          "、被盖掉则是 0）"
+      );
+      checkBool("写回顺序：同拍写三围+护甲，引擎那份没被盖掉", true, grown > COUPLING_ENGINE_KEPT);
+
+      // ---- 清场（一）----
+      // 摘掉两条来源后再等一拍，让「引擎那份」的去向在原生与 `base` 上都定下来。
+      // **不能在这里就把原生护甲硬拉回基线** —— `lastSynced` 这时还停在本组写进去的
+      // 值上，硬拉早了会被折成一次假漂移（差额被当成引擎改的，折进 base）。
+      sheet.removeSource(KEY_AGI);
+      sheet.removeSource(KEY_ARM);
+      sheet.setSource(KEY_DIRTY, []);
+
+      scheduler.defer(WRITEBACK_WAIT, () => {
+        check("写回顺序：清场后敏捷归位", agi0, GetHeroAgi(u, false));
+
+        // ---- 清场（二）----
+        // 本组会在护甲上留下一点残留（引擎那份被折进 `base` 之后，敏捷一还原就找不回来
+        // 了 —— 那正是本组要观察的现象本身）。硬拉回基线，下一拍折算把 `base` 一起带回来：
+        // 硬拉后的原生与 `lastSynced` 不同 → 差额被折进 base → final 跟着写回去。
+        SetUnitState(u, UNIT_STATE_DEFEND_WHITE, armor0);
+        sheet.setSource(KEY_DIRTY, []);
+
+        scheduler.defer(WRITEBACK_WAIT, () => {
+          check("写回顺序：清场后原生护甲归位", armor0, GetUnitState(u, UNIT_STATE_DEFEND_WHITE));
+          check("写回顺序：清场后 base 也无残留", armor0, sheet.getBase(ARM_STAT));
+          sheet.removeSource(KEY_DIRTY);
+          check("写回顺序：本组来源已摘干净", src0, sheet.sourceCount());
+          reportTotal();
+        });
+      });
+    });
+  });
 }

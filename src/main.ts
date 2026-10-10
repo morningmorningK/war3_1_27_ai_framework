@@ -14,6 +14,7 @@ import { NativeUISystem } from "./system/ui/gameui";
 import { registerDefaultRelicsAndPools } from "./system/relic";
 import { initItemRelicBridge } from "./system/item/ItemRelicBridge";
 import { initTestSkills } from "./system/skill/TestSkills";
+import { ElementalReactionSystem } from "./system/element/ElementalReactionSystem";
 import { registerSkillBuffDisplays } from "./system/skill/SkillBuffs";
 import { BuffBarUI } from "./system/ui/component/BuffBarUI";
 import { CommandCardCooldownUI } from "./system/ui/component/CommandCardCooldownUI";
@@ -33,6 +34,8 @@ import { seedChatBoxDemo } from "./test/ChatBoxTestExample";
 import { statSelfTest } from "./test/StatSystemTestExample";
 import { statPanelSelfTest } from "./test/StatPanelTestExample";
 import { elementalDamageSelfTest } from "./test/ElementalDamageTestExample";
+import { elementalReactionSelfTest } from "./test/ElementalReactionTestExample";
+import { elementAuraSelfTest } from "./test/ElementAuraTestExample";
 import { StatSystem } from "./system/stat";
 import { DamagePipeline } from "./system/combat";
 import LifestealSystem from "./system/combat/LifestealSystem";
@@ -139,6 +142,14 @@ function main(): void {
       log.error(`元素伤害公式自测抛出异常，已隔离：${e}`);
     }
 
+    // 元素反应（纯函数层）的自测（§2.2 / Step 1）。同样是纯计算，不碰引擎。
+    // 单独 try/catch：与上面两套互不依赖，一个抛了不该让另一个不跑。
+    try {
+      elementalReactionSelfTest();
+    } catch (e) {
+      log.error(`元素反应自测抛出异常，已隔离：${e}`);
+    }
+
     // 阶段 B 的伤害探针（`src/test/DamageProbe.ts`）已于 Step 6 验收通过后删除。
     // 它验过的口径都记在 memory `wc3-damage-event-semantics` 里；P6/P7/P8 三段
     // 的结论（接管后写回值不被二次削甲、遗物钩子、真物品拾取/丢弃）分别对应
@@ -161,6 +172,17 @@ function main(): void {
     } catch (e) {
       log.error(`属性面板自测抛出异常，已隔离：${e}`);
     }
+
+    // 元素附着 / 反应系统的自测（§2.2 / Step 2）。同样需要**真单位**（附着是挂在
+    // `BuffManager` 上的 buff），所以和面板自测同一个 1.5s 时机。
+    // 单独 try/catch：两者互不依赖，一个抛了不该让另一个不跑。
+    // ⚠️ 它和面板自测挑的**不是**同一个单位（面板只要「无属性表」的，附着不挑）
+    // —— 所以两者不会互相干扰；附着不带属性修正器，也动不到面板的读数。
+    try {
+      elementAuraSelfTest();
+    } catch (e) {
+      log.error(`元素附着自测抛出异常，已隔离：${e}`);
+    }
   });
 
   // 攻速 / 每秒回复那两个一次性探针（`AttackSpeedProbe.ts` / `RegenProbe.ts`）
@@ -169,6 +191,19 @@ function main(): void {
   //   - 回复是**一个原生字段**（物品/技能那份也累加在里面）、写入是绝对值覆盖
   //     → memory `wc3-unit-state-japi-write`
   // 两条都验完了，**不要再把它们加回来**；要复测照那段 memory 重写即可。
+  //
+  // 漂移槽位探针（`DriftSlotProbe.ts`，2026-10-07 三轮跑完）也已删除 —— 它把
+  // `DRIFT_SLOTS` 那份名单一条条问出来了，读数全在 `stat/StatSheet.ts` 的
+  // `DRIFT_SLOTS` 注释里。**同样不要再加回来**：要复测照那张表重写。
+
+  // 攻速（`0x51`）接线前的一次性探针（`AttackSpeedWireProbe.ts`，2026-10-07 两轮跑完）
+  // 也已删除，**不要再加回来** —— 它把接法的三个前提问出来了，读数落档在
+  // `stat/StatSheet.ts` 的 `DRIFT_SLOTS` 表（攻速那一行）与 `stat/types.ts` 的 ⚠️：
+  //   - 引擎对 `0x51` 是**加法**（偏离值 3.700 + 敏捷×10 → 3.900）；
+  //   - **但每写回一次就把写那一刻的敏捷项固化一次**（再写 3.700 读回 3.700，那 0.2
+  //     等 2 秒也没回来）⟹ 折算不是「更好」而是它的活路；
+  //   - 非英雄可写、写后稳定（步兵 1.500 → 1.500）⟹ 不需要英雄守卫。
+  // 要复测照那两处重写。
 
 }
 
@@ -317,6 +352,21 @@ export function initialize(): void {
     DamagePipeline.getInstance().initialize();
   } catch (e) {
     log.error(`DamagePipeline.initialize() 抛出异常，已隔离：${e}`);
+  }
+
+  // 元素反应系统（§2.2 附着骨架）。**位置在 `BuffSystem.init()` 之后** ——
+  // 它往目标身上挂附着 buff，走的是 `BuffManager`，生命周期得先活着。
+  //
+  // 它**不依赖 `StatSystem`**：附着 buff 不带属性修正器（`getStatModifiers()` 恒 `[]`），
+  // 不碰属性表。`init()` 本身只做两件事：注册 7 个附着展示、订阅死亡清理 CD。
+  // 真正的判定入口 `resolve()` 由 `DamagePipeline` 在伤害回调里调（见那里的接入）。
+  //
+  // 包 try/catch 的理由同上面几处：bootstrap.lua 调 main.initialize() 时没有 pcall，
+  // 这里抛出去后面所有语句都不会执行。
+  try {
+    ElementalReactionSystem.getInstance().init();
+  } catch (e) {
+    log.error(`ElementalReactionSystem.init() 抛出异常，已隔离：${e}`);
   }
 
   // 属性系统的冲刷器：按 0.1s 一拍把脏掉的属性表写回原生。

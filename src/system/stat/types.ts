@@ -42,7 +42,7 @@ export const StatType = {
   // ---- 基础战斗 ----
   BASE_ATTACK: 8, //    白字基础攻击（原生 UNIT_STATE_ATTACK_WHITE）。`%攻击力` 作用在这一层
   BONUS_ATTACK: 9, //   绿字加成攻击（原生 UNIT_STATE_ATTACK_BONUS）。装备的固定攻击力落这一层
-  ATTACK_SPEED: 10, //  攻速**倍率**（1.0 = 100%），原生可读写，见下面 ⚠️
+  ATTACK_SPEED: 10, //  攻速**倍率**（1.0 = 100%），原生可读写；加成一律用 FLAT，见下面 ⚠️
   ARMOR: 11, //         护甲（原生）
   HP_REGEN: 12, //      每秒生命回复（原生，走 JAPI 的 DzSetUnitLifeRegen）
   MP_REGEN: 13, //      每秒魔法回复（原生，走 JAPI 的 DzSetUnitManaRegen）
@@ -84,18 +84,36 @@ export const StatType = {
  * `[SetUnitState]`）。wc3ts 的 `setUnitAttackSpeedJAPI` 也是它 —— 它那个形参名
  * `attacksPerSecond` 是错的。
  *
- * 另有一条更要紧的实测：**引擎会把敏捷增量叠加在写回值之上**。写 2.520 之后
- * 敏捷 13→23，读数变 2.720（正好 +0.2），敏捷还原又回到 2.520。所以攻速 buff
- * 不会被升级 / 加敏捷冲掉。
+ * 另有一条更要紧的实测（2026-10-07 补全）：**引擎把写回值当初值、再按当前敏捷重算**
+ * —— 存 `写值 − 0.02×敏捷`，读 `存的 + 0.02×敏捷`。写 2.520（敏捷 13）后敏捷涨到 23，
+ * 读数变 2.720（+0.2）。**但「再写一次同一个值」会把那 0.2 永久抹掉**：写成偏离值
+ * 3.700 后敏捷 +10 读 3.900，再写一次 3.700 立刻读回 3.700，等 2 秒也没回来。
+ * 而 `StatSheet` 是**每拍都在写回**的，所以这就是它的日常 —— 攻速 buff
+ * **并不是**「不会被升级冲掉」，冲不冲掉全看写回那一拍折没折。
  *
- * ⚠️ **但还没接线**（`StatSheet` 既不快照它的 base、也没有 `writeNative` 分支）：
- * 上面的写回是**绝对值覆盖**，而 base 是冻结快照 —— 先接上去的话，之后有来源改
- * 攻速时会把引擎自己叠的那部分（敏捷成长）一起抹掉。这和 `HP_REGEN` 那两个是
- * **同一个待治理的毛病**，见 `todo_next.md`；治理之前**别给它挂来源**。
+ * ✅ **已接线（2026-10-07）**：`snapshotBaseFromNative` 快照、`writeNative` 有对应
+ * case、并且它在 `DRIFT_SLOTS` 名单里。折算（`foldNativeDrift`）把引擎叠的 0.02/点
+ * 抬进 base，我们写回去的才是「含敏捷成长」的值 —— 对攻速来说折算是**唯一的活路**，
+ * 不是「折了更好」。非英雄实测可写、写后 2 秒稳定（步兵 1.500 → 1.500），
+ * 所以**没有**加英雄守卫。回归见自测第 ⑩ 组。
  *
- * 面板上那一行**照常显示**，走的是反面：**直读原生 `0x51`**、不碰属性表
- * （`StatPanelUI.attackSpeedText`），显示成 `x1.26`。所以「显示得出来」和
- * 「能不能被来源改」是两件事，别把前者的完成当成后者也做了。
+ * 面板上那一行仍然**直读原生 `0x51`**、不碰属性表（`StatPanelUI.attackSpeedText`），
+ * 显示成 `x1.26` —— 显示那条路没有因为接线而改变。所以「显示得出来」和
+ * 「能不能被来源改」是两件独立的事，现在两件都有了。
+ *
+ * ### ⚠️ 加攻速的来源一律用 `FLAT`，**不要**用 `PERCENT`
+ *
+ * 魔兽的攻速加成是**加法**进那个倍率的：
+ *
+ * ```
+ *   0x51 = 1 + 0.02×敏捷 + Σ攻速加成
+ * ```
+ *
+ * 敏捷 35 的英雄出厂 `0x51 = 1.70`，+30% 后是 **2.00**，不是 `1.70 × 1.3 = 2.21`。
+ * 原生的「攻击速度增加」物编字段加的就是同一个加法区，所以多件加速装之间也相加。
+ * 用 `PERCENT` 会变成 `base × (1 + 0.3)`，敏捷越高偏得越远 —— 那不是原生语义。
+ * **与「base 有没有值」无关**：那个判据只回答「`FLAT` 会不会是空操作」，
+ * 回答不了「该加还是该乘」。样板见 `relic/definitions/hasteGlove.ts`。
  */
 export const SCALAR_STAT_COUNT = 27;
 
@@ -129,8 +147,33 @@ export function elementIndex(e: ElementId): number {
 export const ELEM_DMG_BASE = SCALAR_STAT_COUNT;
 /** 元素抗性块基址（35..42，含物理） */
 export const ELEM_RES_BASE = ELEM_DMG_BASE + ELEMENT_COUNT;
+/**
+ * 元素**易伤**块基址（43..50，含物理）—— 「**受到的**该元素伤害增加」的比例。
+ *
+ * ## 为什么必须单开一块，而不是拿抗性做负数
+ *
+ * `elemResistStat()` 那一格被 `effectiveElementResist()` 钳在 `[0,1]`：挂负数只能
+ * 抵消目标已有的正抗性，**永远无法低于 0 产生增伤**。那个钳制是**刻意的**
+ * （抗性穿透到负数不额外增伤），不能拆。
+ * 而 `elemDamageStat()` 那一格是**攻方**属性 —— 挂在受击方身上不生效
+ * （`DamagePipeline_isDefensiveStat` 不含它）。
+ * `DAMAGE_REDUCTION` 又是全局单值、没有元素维度。三条路都堵死，所以新开一块。
+ *
+ * ## 语义
+ *
+ * ```
+ * 最终伤害 ×= (1 + elemVulnStat(element))      // 只对非剧变段生效
+ * ```
+ *
+ * ⚠️ **读的是受击方**（`DamagePipeline_isDefensiveStat` 必须把这一块算进去，
+ * 否则会从**攻方**读 ⇒ 恒 0、静默无效）。
+ *
+ * ⚠️ **`clampFinal` 钳 ≥ 0**：负数易伤会变成「元素减伤」，与抗性语义重叠。
+ * 要减伤请用 `elemResistStat`。
+ */
+export const ELEM_VULN_BASE = ELEM_RES_BASE + ELEMENT_COUNT;
 /** 属性总数。所有遍历都写 `for (i = 0; i < STAT_COUNT; i++)` */
-export const STAT_COUNT = ELEM_RES_BASE + ELEMENT_COUNT;
+export const STAT_COUNT = ELEM_VULN_BASE + ELEMENT_COUNT;
 
 /** 某元素的伤害加成属性 id。传 "physical" 就是物理伤害加成 */
 export function elemDamageStat(e: ElementId): StatId {
@@ -140,6 +183,11 @@ export function elemDamageStat(e: ElementId): StatId {
 /** 某元素的抗性属性 id */
 export function elemResistStat(e: ElementId): StatId {
   return ELEM_RES_BASE + elementIndex(e);
+}
+
+/** 某元素的**易伤**属性 id（「受到的该元素伤害增加」）。读受击方 */
+export function elemVulnStat(e: ElementId): StatId {
+  return ELEM_VULN_BASE + elementIndex(e);
 }
 
 /**
@@ -181,8 +229,14 @@ export function statName(stat: StatId): string {
   if (stat >= ELEM_DMG_BASE && stat < ELEM_RES_BASE) {
     return `${elemName(stat - ELEM_DMG_BASE)}_dmg`;
   }
-  if (stat >= ELEM_RES_BASE && stat < STAT_COUNT) {
+  // ⚠️ 上界必须是 `ELEM_VULN_BASE` 而**不是** `STAT_COUNT` —— 用后者的话
+  // 易伤那 8 格（43..50）会被当成抗性，日志里显示成 `thunder_res`。
+  // 加属性块时这条边界要跟着块走，它是唯一一处靠下标区间判断的地方。
+  if (stat >= ELEM_RES_BASE && stat < ELEM_VULN_BASE) {
     return `${elemName(stat - ELEM_RES_BASE)}_res`;
+  }
+  if (stat >= ELEM_VULN_BASE && stat < STAT_COUNT) {
+    return `${elemName(stat - ELEM_VULN_BASE)}_vuln`;
   }
   const n = SCALAR_STAT_NAMES[stat];
   return n === undefined ? `STAT_${stat}` : n;
@@ -282,6 +336,11 @@ function clampRange(v: number, lo: number, hi: number): number {
  * 那一步在 `StatSheet.recalc()` 里单独做，这里只管它的下限。
  */
 export function clampFinal(stat: StatId, v: number): number {
+  // 元素易伤块：钳 ≥ 0。负数易伤会变成「元素减伤」，与 `elemResistStat` 的语义
+  // 重叠 —— 要减伤请用抗性那一格。区间判断而不是 `case`：这一块是 8 个连续 id。
+  if (stat >= ELEM_VULN_BASE && stat < STAT_COUNT) {
+    return v < 0 ? 0 : v;
+  }
   switch (stat) {
     case StatType.COOLDOWN_REDUCTION:
       return clampRange(v, 0, 0.5); // 冷却缩减最高 50%
@@ -349,6 +408,12 @@ export const DEFAULT_CRIT_DMG = 0.5;
 export interface StatChangedPayload {
   /** 生产环境里这就是那个 `Actor` */
   actor: StatSheetHost;
-  /** 本次真正发生变化的属性 id 列表（密集数组，`push` 生成） */
+  /**
+   * 本次真正发生变化的属性 id 列表（密集数组，`push` 生成）。
+   *
+   * ⚠️ **顺序 = `StatSheet` 的 `WRITE_ORDER`，不是属性 id 升序**（三围排在最后，
+   * 因为引擎的三围派生是就地叠加的增量，必须先写派生槽位）。**订阅者不得依赖顺序** ——
+   * 只用 `indexOf`/遍历判定「有没有变」，别拿 `changed[0]` 当「最重要的那个」。
+   */
   changed: StatId[];
 }

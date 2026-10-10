@@ -5,8 +5,15 @@ import { grantTestSkillsTo } from "src/system/skill/TestSkills";
 import { FourCC, i2c } from "src/utils/helper";
 import { createLogger } from "src/utils/logger";
 import { StatType } from "src/system/stat";
+import { BUFF_DURATION_PERMANENT } from "src/system/buff/types";
+import type { ShieldElementStyle } from "src/system/buff/ShieldEffects";
 
 const log = createLogger("UnitEventExample");
+
+const unitModelNatives = require("jass.japi") as {
+  DzSetUnitModel: (this: void, target: unit, model: string) => void;
+};
+
 
 export function rgeisterUnitSpellEffectEvent(): void {
   gameEvents.onSpellEffect((data: SpellEventData) => {
@@ -76,8 +83,10 @@ export function rgeisterUnitSpellEffectEvent(): void {
   // 上面那个圣骑士是**英雄** —— 于是「普通单位血条」这个开关在地图里没有对照物。
   // 补几个步兵（`hfoo`）来当对照（都归 ` Players[3]`）。
   for (let i = 0; i < 6; i++) {
-    const unit = Actor.create(Players[3], FourCC("hfoo"), -300 + i * 120, 350);
+    const unit = Actor.create(Players[3], FourCC("hfoo"), -200, -1000);
     if (unit == null) continue;
+    // 先恢复测试步兵的原始模型，再添加独立护盾 effect。
+    // 模型恢复只针对这里创建的 hfoo，护盾系统不能修改宿主单位模型。
     unit.setPreselectUIVisible(false);
     unit.createBloodBar();
     unit.maxLife = 1000;
@@ -85,6 +94,37 @@ export function rgeisterUnitSpellEffectEvent(): void {
     unit.maxMana = 1000
     unit.mana = 1000;
     unit.addShield(1000)
+    unit.moveSpeed = 0;
     // 同上：步兵不是英雄，`getDisplayName()` 取单位名 —— 这里会显示「步兵」
+  }
+
+  // createShieldEffectPreview();
+}
+
+/** 圣骑士下方一排八个护盾样本，从左到右：火、水、冰、雷、风、岩、草、无元素。 */
+function createShieldEffectPreview(): void {
+  const samples: { style: ShieldElementStyle; label: string }[] = [
+    { style: "fire", label: "火护盾" },
+    { style: "water", label: "水护盾" },
+    { style: "ice", label: "冰护盾" },
+    { style: "thunder", label: "雷护盾" },
+    { style: "wind", label: "风护盾" },
+    { style: "rock", label: "岩护盾" },
+    { style: "grass", label: "草护盾" },
+    { style: "none", label: "无元素护盾" },
+  ];
+  for (let i = 0; i < samples.length; i++) {
+    const sample = samples[i];
+    // 260 间距避免光环重叠；归玩家 1，便于看见、选中并核对名称。
+    const actor = Actor.create(Players[0], FourCC("hfoo"), -910 + i * 260, -500, 270);
+    if (actor === undefined) continue;
+    actor.name = sample.label;
+    actor.setLabel(sample.label);
+    actor.setPreselectUIVisible(false);
+    actor.createBloodBar();
+    actor.invulnerable = true;
+    // actor.paused = true;
+    actor.addElementalShield(1000, sample.style, BUFF_DURATION_PERMANENT);
+    actor.moveSpeed = 0;
   }
 }

@@ -4,14 +4,30 @@
 
 import { Actor } from "../actor";
 import { eventBus } from "../event/EventBus";
-import { BUFF_EVENT_BUFFS_CHANGED } from "./types";
+import { BUFF_EVENT_BUFFS_CHANGED, BuffTypeId } from "./types";
 import { Buff } from "./Buff";
-import { ShieldBuff } from "./ShieldBuff";
+import { ShieldBuff, ElementalShieldBuff, CrystallizeShieldBuff } from "./ShieldBuff";
+import type { ShieldElement } from "./ShieldRules";
+import type { ShieldReaction } from "./ShieldBuff";
+import type { CrystalElement } from "../element/reactionTable";
+import { FROZEN_SECONDS_PER_GAUGE } from "../element/reactionTable";
+import type { ElementId } from "../stat";
 import { StunBuff } from "./StunBuff";
 import { FreezeBuff } from "./FreezeBuff";
 import { RootBuff, SlowBuff } from "./ControlBuffs";
 import { BUFF_DURATION_PERMANENT } from "./types";
 import { StatModifier, StatSourceKind, StatType, toStatModifier } from "../stat/types";
+import { SHIELD_EFFECT_MODELS, SHIELD_EFFECT_ATTACH_POINT } from "./ShieldEffects";
+import type { ShieldEffectStyle } from "./ShieldEffects";
+import { createLogger } from "src/utils/logger";
+
+const shieldEffectLog = createLogger("ShieldEffect");
+
+/** 直接使用 common 原生，特效句柄与 Actor / Unit 包装缓存分开持有。 */
+const shieldNatives = require("jass.common") as {
+  AddSpecialEffectTarget: (this: void, model: string, target: unit, point: string) => effect | undefined;
+  DestroyEffect: (this: void, handle: effect) => void;
+};
 
 /**
  * buff 挂属性修正器用的来源 key。
@@ -99,13 +115,56 @@ function applyTenacity(owner: Actor, duration: number): number {
 export class BuffManager {
   private owner: Actor;
   private buffs: Buff[] = [];
+  /** 每单位一个外观，跟随当前最先承伤的有效护盾，避免多来源光效叠亮。 */
+  private shieldEffect: effect | undefined;
+  private shieldEffectPath: string | undefined;
 
   constructor(owner: Actor) {
     this.owner = owner;
   }
 
   private emitChanged(): void {
+    this.syncShieldEffect();
     eventBus.emit(BUFF_EVENT_BUFFS_CHANGED, { actor: this.owner });
+  }
+
+  private syncShieldEffect(): void {
+    let path: string | undefined;
+    const handle = this.owner.handle;
+    if (handle !== undefined && GetUnitTypeId(handle) !== 0 && GetWidgetLife(handle) > 0.405) {
+      for (let i = 0; i < this.buffs.length; i++) {
+        const buff = this.buffs[i];
+        if (buff instanceof ShieldBuff && !buff.isDepleted() && !buff.isExpired()) {
+          path = SHIELD_EFFECT_MODELS[buff.effectStyle];
+          break;
+        }
+      }
+    }
+    if (path === this.shieldEffectPath) return;
+    if (this.shieldEffect !== undefined) {
+      shieldNatives.DestroyEffect(this.shieldEffect);
+      this.shieldEffect = undefined;
+    }
+    this.shieldEffectPath = undefined;
+    if (path === undefined || handle === undefined) return;
+    // 外观创建失败不应打断护盾发放或伤害结算。
+    try {
+      const attachPoint = SHIELD_EFFECT_ATTACH_POINT;
+      const attachedEffect = shieldNatives.AddSpecialEffectTarget(path, handle, attachPoint);
+      if (attachedEffect === undefined) return;
+      // 不把宿主单位句柄当成特效保存或销毁。
+      if (GetHandleId(attachedEffect) === GetHandleId(handle)) {
+        shieldEffectLog.error("附着返回了单位句柄，已停止保存和操作该句柄");
+        return;
+      }
+      this.shieldEffect = attachedEffect;
+      this.shieldEffectPath = path;
+      // 淡色和透明度由模型材质及其动画决定，不修改宿主或附着特效的顶点透明度。
+      shieldEffectLog.info("护盾附着 " + attachPoint + "：单位=" + GetHandleId(handle) +
+        " 特效=" + GetHandleId(attachedEffect));
+    } catch (e) {
+      shieldEffectLog.error(`创建护盾特效失败：${e}`);
+    }
   }
 
   getOwner(): Actor {
@@ -185,6 +244,24 @@ export class BuffManager {
   }
 
   addBuff(buff: Buff): void {
+    if (buff instanceof ShieldBuff) {
+      // 所有护盾共用一个位置：按旧盾剩余值与新盾上限择高，不叠加。
+      if (buff.isDepleted() || buff.isExpired() || this.buffs.indexOf(buff) >= 0) return;
+      for (const old of this.buffs) {
+        if (old instanceof ShieldBuff && !old.isDepleted() && !old.isExpired() && old.current > buff.max) {
+          // 保留旧盾的元素、来源和剩余时长；较弱的新盾不续期。
+          return;
+        }
+      }
+      for (let i = this.buffs.length - 1; i >= 0; i--) {
+        const old = this.buffs[i];
+        if (old instanceof ShieldBuff) {
+          this.buffs.splice(i, 1);
+          this.detach(old);
+        }
+      }
+      // 替换结束后统一发送一次更新，避免 UI 和特效先清空、再重建。
+    }
     buff.holderId = this.owner.id;
     this.buffs.push(buff);
     // 顺序：**先挂属性修正器，再 `onApply()`** —— 让 `onApply()` 里用
@@ -327,7 +404,8 @@ export class BuffManager {
   }
 
   /**
-   * 添加护盾 Buff（可选持续时间，默认永久直到被打破）。
+   * 添加护盾 Buff，旧盾剩余值更高时保留旧盾，否则换新盾（默认永久）。
+   * 返回新建实例；较弱的新盾不会挂载到单位。
    *
    * `amount` 是**基础量**，实际挂上去的是护盾强效放大后的值 —— 唯一的消费者
    * 就在下面这一行（`applyShieldStrength`）。所以返回的 `ShieldBuff.max`
@@ -336,13 +414,21 @@ export class BuffManager {
   addShieldBuff(
     amount: number,
     duration: number = BUFF_DURATION_PERMANENT,
-    displayKey?: string
+    displayKey?: string,
+    effectStyle?: ShieldEffectStyle,
+    element?: ShieldElement
   ): ShieldBuff {
-    const buff = new ShieldBuff(
-      applyShieldStrength(this.owner, amount),
-      duration,
-      displayKey
-    );
+    const strength = applyShieldStrength(this.owner, amount);
+    const buff = element !== undefined && element !== "none"
+      ? new ElementalShieldBuff(strength, duration, element, displayKey)
+      : new ShieldBuff(strength, duration, displayKey, element === "none" ? "none" : effectStyle);
+    this.addBuff(buff);
+    return buff;
+  }
+
+  /** 结晶护盾厚度已含触发者等级 / 精通，护盾强效由拾取者决定。 */
+  addCrystallizeShield(amount: number, duration: number, element: CrystalElement): CrystallizeShieldBuff {
+    const buff = new CrystallizeShieldBuff(applyShieldStrength(this.owner, amount), duration, element);
     this.addBuff(buff);
     return buff;
   }
@@ -441,7 +527,8 @@ export class BuffManager {
    *
    * 返回实例而不是 `void`：调用处要打日志念出**实际时长**（同 `addStunBuff`）。
    */
-  addFreezeBuff(duration: number): FreezeBuff | undefined {
+  addFreezeBuff(duration: number, gauge: number = duration / FROZEN_SECONDS_PER_GAUGE,
+    sourceId: number = 0, attachedBy?: object): FreezeBuff | undefined {
     if (duration <= 0) {
       return undefined;
     }
@@ -451,16 +538,35 @@ export class BuffManager {
       // `addStunBuff`（挂一个 0 时长的实例会先 `onApply()` 暂停单位）。
       return undefined;
     }
-    const buff = new FreezeBuff(this.owner, reduced);
+    // 所有冻结来源统一择较长控制，比较计入韧性后的真实时长。
+    const existing = this.getBuffsByType(BuffTypeId.FREEZE);
+    for (const old of existing) {
+      if (old instanceof FreezeBuff && !old.isExpired() && old.duration - old.elapsed >= reduced) return old;
+    }
+    for (const old of existing) this.removeBuff(old);
+    const buff = new FreezeBuff(this.owner, reduced, gauge);
+    buff.sourceId = sourceId;
+    buff.attachedBy = attachedBy;
     this.addBuff(buff);
     return buff;
+  }
+
+  /** 反应扣冻结量后同步更新 Buff UI，耗尽走标准移除 / 暂停解除路径。 */
+  consumeFreezeGauge(buff: FreezeBuff, amount: number): number {
+    if (this.buffs.indexOf(buff) < 0) return 0;
+    const consumed = buff.consumeGauge(amount);
+    if (consumed > 0) {
+      if (buff.isExpired()) this.removeBuff(buff);
+      else this.emitChanged();
+    }
+    return consumed;
   }
 
   /**
    * 对当前单位护盾造成伤害，返回未被吸收的剩余伤害。
    * 按现有护盾 buff 顺序依次吸收（先加的先吸）。
    */
-  applyShieldDamage(damage: number): number {
+  applyShieldDamage(damage: number, element?: ElementId, reaction?: ShieldReaction): number {
     let remaining = damage;
     let changed = false;
     const shields = this.getShieldBuffs();
@@ -468,7 +574,8 @@ export class BuffManager {
       if (remaining <= 0) {
         break;
       }
-      const absorb = sh.absorbDamage(remaining);
+      const multiplier = reaction?.shieldId === sh.id ? reaction.consumptionMultiplier : undefined;
+      const absorb = sh.absorbDamage(remaining, element, multiplier);
       remaining -= absorb;
       if (absorb > 0) {
         changed = true;

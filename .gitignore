@@ -25,3 +25,17 @@ reference
 图片素材
 callback
 resource
+
+# 护盾特效是地图源码资源，保留这批模型与纹理。
+!maps/resource/
+maps/resource/*
+!maps/resource/war3mapImported/
+maps/resource/war3mapImported/*
+!maps/resource/war3mapImported/Sacred Guard * - Classic.mdx
+!maps/resource/war3mapImported/Shield Pale *.mdx
+!maps/resource/war3mapImported/flare_bw.blp
+!maps/resource/war3mapImported/flaresimple_bw.blp
+!maps/resource/war3mapImported/flaresimple01_bw.blp
+!maps/resource/war3mapImported/flaresimple02_bw.blp
+!maps/resource/war3mapImported/rainbowlenseflare.blp
+!maps/resource/war3mapImported/shockwavesoft01_bw.blp

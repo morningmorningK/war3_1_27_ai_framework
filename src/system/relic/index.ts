@@ -24,3 +24,4 @@ export { arcaneGrimoireDefinition } from "./definitions/arcaneGrimoireWater";
 export { timeHourglassDefinition, TIME_HOURGLASS_CDR } from "./definitions/timeHourglass";
 export { shieldAmuletDefinition, SHIELD_AMULET_BONUS } from "./definitions/shieldAmulet";
 export { tenacityCharmDefinition, TENACITY_CHARM_BONUS } from "./definitions/tenacityCharm";
+export { hasteGloveDefinition, HASTE_GLOVE_ATTACK_SPEED } from "./definitions/hasteGlove";

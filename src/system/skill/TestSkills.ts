@@ -1,14 +1,29 @@
 /**
- * 吸血 / 治疗 / 治疗加成 / 神圣护盾 / 眩晕 / 减速 / 禁锢 / 冻结 —— 八个测试技能的
- * **定义与接线**。
+ * 吸血 / 治疗 / 治疗加成 / 神圣护盾 / 眩晕 / 减速 / 禁锢 / 冻结 /
+ * 火弹 / 水弹 / 冰弹 / 雷弹 / 草弹 —— 十三个测试技能的**定义与接线**。
  *
  * ## 这些技能是哪来的
  *
  * 物编里原先只有四个 `ANcl`（通魔）空模板 `A000`~`A003`，没有任何真技能。
  * 本模块对应 `maps/table/ability.ini` 里新加的 **`A010`（吸血）**、
  * **`A011`（治疗）**、**`A012`（治疗加成）**、**`A013`（神圣护盾）**、
- * **`A014`（眩晕）**、**`A015`（减速）**、**`A016`（禁锢）**、**`A017`（冻结）**
- * 八段，rawcode 必须与那边的段名逐字一致。
+ * **`A014`（眩晕）**、**`A015`（减速）**、**`A016`（禁锢）**、**`A017`（冻结）**、
+ * **`A018`（火弹）**、**`A019`（水弹）**、**`A01A`（冰弹）**、**`A01B`（雷弹）**、
+ * **`A01C`（草弹）** 十三段，
+ * rawcode 必须与那边的段名逐字一致。
+ * ⚠️ `A017` 曾经是**空引用**（TS 里有、ini 里没有），症状是「`FreezeBuff`
+ * 从没在游戏里跑过」—— 每次加技能都要反解 `ability.ini` 确认段真的进包了。
+ *
+ * ## 五个元素弹为什么和别的技能不一样
+ *
+ * 其余八个都是「挂一条 buff」或「回一口血」；这五个是**本仓仅在的带元素归属的伤害**。
+ * 原生伤害事件里没有任何元素信息，所以它们得先把「这一发是什么元素」声明给
+ * `ElementalReactionSystem`，管线才会把伤害重新归类成火/水/冰/雷并判反应。
+ * 完整链路见 `TestSkills_castElementBolt()`。
+ *
+ * ⚠️ **`A017`（直接冻结）与「水 + 冰 → 冻结」是两条独立的路**：前者是测试技能，
+ * 直给 `FreezeBuff`；后者是元素反应（`reactionTable.FROZEN`）。两条都收口到
+ * `BuffManager.addFreezeBuff`，所以韧性都生效。
  *
  * ## 为什么没有像 `ItemRelicBridge` 那样自建原生触发器
  *
@@ -32,10 +47,18 @@
  * 新单位永远领不到技能，而这种漏发是**静默**的。
  */
 
-import { MapPlayer } from "@eiriksgata/wc3ts/*";
+import {
+  ATTACK_TYPE_MAGIC,
+  DAMAGE_TYPE_COLD,
+  MapPlayer,
+  WEAPON_TYPE_WHOKNOWS,
+} from "@eiriksgata/wc3ts/*";
 import { Actor } from "src/system/actor";
 import { applyHeal } from "src/system/combat";
+import { ElementalReactionSystem } from "src/system/element/ElementalReactionSystem";
 import { gameEvents, SpellEventData } from "src/system/event";
+import { ElementId } from "src/system/stat";
+import type { ShieldElement } from "src/system/buff/ShieldRules";
 import { FourCC } from "src/utils/helper";
 import {
   DIVINE_SHIELD_DISPLAY_KEY,
@@ -72,6 +95,20 @@ export const AB_SLOW = FourCC("A015");
 export const AB_ROOT = FourCC("A016");
 /** 冻结：单位目标，完全无法操作，且被打疼了会碎冰 */
 export const AB_FREEZE = FourCC("A017");
+/** 火弹：单位目标，打出一发**带火焰元素归属**的伤害（会挂火附着 / 触发蒸发） */
+export const AB_FIRE_BOLT = FourCC("A018");
+/** 水弹：单位目标，打出一发**带水元素归属**的伤害（会挂水附着 / 触发蒸发） */
+export const AB_WATER_BOLT = FourCC("A019");
+/** 冰弹：单位目标，打出一发**带冰元素归属**的伤害（会挂冰附着 / 触发融化、冻结） */
+export const AB_ICE_BOLT = FourCC("A01A");
+/** 雷弹：单位目标，打出一发**带雷元素归属**的伤害（会挂雷附着 / 触发超载、超导、感电） */
+export const AB_THUNDER_BOLT = FourCC("A01B");
+/** 草弹：单位目标，打出一发**带草元素归属**的伤害（会挂草附着 / 触发绽放、激化） */
+export const AB_GRASS_BOLT = FourCC("A01C");
+/** 风弹：扩散目标的火 / 水 / 雷 / 冰 / 草附着。 */
+export const AB_WIND_BOLT = FourCC("A01D");
+/** 岩弹：目标带火 / 水 / 雷 / 冰附着时生成结晶碎片。 */
+export const AB_ROCK_BOLT = FourCC("A01E");
 
 /**
  * 「神圣护盾」的基础护盾量与持续时间。
@@ -84,6 +121,8 @@ export const AB_FREEZE = FourCC("A017");
  */
 const SHIELD_BASE = 100;
 const SHIELD_DURATION = 10;
+/** 技能护盾的实际元素；可改成七元素之一。none 保留原神圣护盾的普通承伤。 */
+const DIVINE_SHIELD_ELEMENT: ShieldElement = "none";
 
 /**
  * 「眩晕」的**基础**时长（秒）。
@@ -123,6 +162,24 @@ const ROOT_BASE_DURATION = 3;
 const FREEZE_BASE_DURATION = 4;
 
 /**
+ * 「火弹」/「水弹」打出的伤害基数。
+ *
+ * **不含**元素加成 / 暴击 / 抗性 / 免伤 —— 那些由 `DamagePipeline` 走完整乘区时叠上
+ * （技能声明的是「这一发是火伤」，不是「这一发打多少」）。所以这个 100 在带火伤加成的
+ * 单位手里会打出更高的数，这是**要的**。
+ */
+const ELEMENT_BOLT_DAMAGE = 100;
+
+/**
+ * 「火弹」/「水弹」挂上的**元素量**（U）。2U ≈ 15 秒的自行为期（见 `AURA_DECAY_PER_SECOND`）。
+ *
+ * 给 2U 而不是 1U 是有意的：水打火时消耗比是 0.5，2U 水只吃掉 1U 火，
+ * 目标身上**还剩 1U 火**（图标不消失、只是时间条短了一半）—— 一眼就能看出
+ * 「反应消耗了附着」而不是「附着被整个替换了」。
+ */
+const ELEMENT_BOLT_GAUGE = 2;
+
+/**
  * 发放用的技能表。
  *
  * **字面量数组一次建出来**（密集、无洞）—— 事后按下标写、留 `undefined` 的数组
@@ -132,14 +189,21 @@ const FREEZE_BASE_DURATION = 4;
  * 都遍历它，不需要各自再写一遍。
  */
 const ALL_TEST_ABILITIES: number[] = [
-  // AB_LIFESTEAL,
-  // AB_HEAL,
-  // AB_HEAL_BONUS,
-  // AB_DIVINE_SHIELD,
-  // AB_STUN,
-  AB_SLOW,
-  AB_ROOT,
+  // AB_LIFESTEAL,  // 吸血
+  // AB_HEAL,     // 生命恢复
+  // AB_HEAL_BONUS, // 治疗效果提升
+  // AB_DIVINE_SHIELD, // 护盾
+  // AB_STUN, // 眩晕
+  // AB_SLOW, // 减速
+  // AB_ROOT, // 禁锢
   AB_FREEZE,
+  AB_FIRE_BOLT,
+  AB_WATER_BOLT,
+  AB_ICE_BOLT,
+  AB_THUNDER_BOLT,
+  // AB_GRASS_BOLT, // 查看草元素对水结晶护盾的克制效果
+  // AB_WIND_BOLT,
+  // AB_ROCK_BOLT,
 ];
 
 let bound = false;
@@ -162,9 +226,16 @@ export function initTestSkills(): void {
   gameEvents.onSpellEffect((data: SpellEventData) => TestSkills_onSlow(data), AB_SLOW);
   gameEvents.onSpellEffect((data: SpellEventData) => TestSkills_onRoot(data), AB_ROOT);
   gameEvents.onSpellEffect((data: SpellEventData) => TestSkills_onFreeze(data), AB_FREEZE);
+  gameEvents.onSpellEffect((data: SpellEventData) => TestSkills_onWaterBolt(data), AB_WATER_BOLT);
+  gameEvents.onSpellEffect((data: SpellEventData) => TestSkills_onIceBolt(data), AB_ICE_BOLT);
+  gameEvents.onSpellEffect((data: SpellEventData) => TestSkills_onFireBolt(data), AB_FIRE_BOLT);
+  gameEvents.onSpellEffect((data: SpellEventData) => TestSkills_onThunderBolt(data), AB_THUNDER_BOLT);
+  gameEvents.onSpellEffect((data: SpellEventData) => TestSkills_onGrassBolt(data), AB_GRASS_BOLT);
+  gameEvents.onSpellEffect((data: SpellEventData) => TestSkills_onWindBolt(data), AB_WIND_BOLT);
+  gameEvents.onSpellEffect((data: SpellEventData) => TestSkills_castElementBolt(data, "rock"), AB_ROCK_BOLT);
 
   log.info(
-    "测试技能已接线：吸血 / 治疗 / 治疗加成 / 神圣护盾 / 眩晕 / 减速 / 禁锢 / 冻结"
+    "测试技能已接线：吸血 / 治疗 / 治疗加成 / 神圣护盾 / 眩晕 / 减速 / 禁锢 / 冻结 / 火弹 / 水弹 / 冰弹 / 雷弹 / 草弹 / 风弹 / 岩弹"
   );
 }
 
@@ -227,7 +298,7 @@ function TestSkills_onDivineShield(data: SpellEventData): void {
     log.warn("技能「神圣护盾」没取到施法者：" + TestSkills_describe(data));
     return;
   }
-  data.Actor.addShield(SHIELD_BASE, SHIELD_DURATION, DIVINE_SHIELD_DISPLAY_KEY);
+  data.Actor.addElementalShield(SHIELD_BASE, DIVINE_SHIELD_ELEMENT, SHIELD_DURATION, DIVINE_SHIELD_DISPLAY_KEY);
   // ⚠️ 打 `data.Actor.shield` 而不是 `SHIELD_BASE`：**这一行就是「护盾强效有没有生效」
   // 的读数**。属性来源摘干净时打 100，带着「守护护符」时打 150。
   // 打常量的话这一行永远是 100，强效接没接上从日志上完全看不出来。
@@ -315,11 +386,128 @@ function TestSkills_onFreeze(data: SpellEventData): void {
     log.warn("技能「冻结」没取到目标单位：" + TestSkills_describe(data));
     return;
   }
-  const buff = data.targetUnit.buffManager.addFreezeBuff(FREEZE_BASE_DURATION);
+  const buff = data.targetUnit.buffManager.addFreezeBuff(FREEZE_BASE_DURATION, undefined, data.Actor?.id ?? 0);
   // ⚠️ 打**实际时长**（同 `onStun`）：摘干净时打 4，带「坚定护符」时打 2。
   // 碎冰是这条日志**之后**才可能发生的事，别把它和时长读混了。
   const actual = buff === undefined ? 0 : buff.duration;
   log.info("技能「冻结」被释放：" + TestSkills_describe(data) + " 实际时长=" + actual);
+}
+
+// ===========================================================================
+// 元素载荷通道（§2.2）
+// ===========================================================================
+
+/**
+ * A018 火弹：单位目标，打出一发**火焰元素**伤害。
+ *
+ * ⚠️ **顺序不能反**：先 `registerSpellElement`（声明这一发是什么元素），
+ * 再 `UnitDamageTarget`（造伤害）。`UnitDamageTarget` 会**同步**派发伤害事件，
+ * 管线在回调里 `claimSpellElement()` 认领 —— 反过来的话管线先跑完、认领不到，
+ * 这发火弹就退化成「未分类伤害」：既没有火附着、也吃不到火伤加成。
+ */
+function TestSkills_onFireBolt(data: SpellEventData): void {
+  TestSkills_castElementBolt(data, "fire");
+}
+
+/** A019 水弹：单位目标，打出一发**水元素**伤害。与火弹是同一套接线，只有元素不同 */
+function TestSkills_onWaterBolt(data: SpellEventData): void {
+  TestSkills_castElementBolt(data, "water");
+}
+
+/**
+ * A01A 冰弹：单位目标，打出一发**冰元素**伤害。与火弹/水弹是同一套接线。
+ *
+ * 它是**冻结的唯一元素来源** —— 水弹 + 冰弹（任一顺序）触发冻结，
+ * 见 `reactionTable.ts` 的 `FROZEN`。
+ */
+function TestSkills_onIceBolt(data: SpellEventData): void {
+  TestSkills_castElementBolt(data, "ice");
+}
+
+/**
+ * A01B 雷弹：单位目标，打出一发**雷元素**伤害。与火弹/水弹/冰弹是同一套接线。
+ *
+ * 它是**三条剧变反应（超载 / 超导 / 感电）的唯一元素来源** ——
+ * 火+雷、冰+雷、水+雷（任一顺序），见 `reactionTable.ts` 的
+ * `OVERLOAD` / `SUPERCONDUCT` / `ELECTRO_CHARGED`。
+ */
+function TestSkills_onThunderBolt(data: SpellEventData): void {
+  TestSkills_castElementBolt(data, "thunder");
+}
+
+/**
+ * A01C 草弹：单位目标，打出一发**草元素**伤害。与火弹/水弹/冰弹/雷弹是同一套接线。
+ *
+ * 它是**绽放（水+草）与激化（雷+草）两条剧变反应的唯一元素来源**（任一顺序），
+ * 见 `reactionTable.ts` 的 `BLOOM` / `QUICKEN`。
+ */
+function TestSkills_onGrassBolt(data: SpellEventData): void {
+  TestSkills_castElementBolt(data, "grass");
+}
+
+function TestSkills_onWindBolt(data: SpellEventData): void {
+  TestSkills_castElementBolt(data, "wind");
+}
+
+/**
+ * 元素弹的公共实现。**只差一个 `element`** —— 六个技能各写一遍是会写歪的那种重复
+ * （改了火弹忘了改水弹）。
+ */
+function TestSkills_castElementBolt(data: SpellEventData, element: ElementId): void {
+  const caster = data.Actor;
+  const target = data.targetUnit;
+  if (caster === undefined || target === undefined) {
+    // 取不到目标是物编的目标类型写错了（Channel 的经典坑），不是异常 —— 同 `onHeal`
+    log.warn("元素弹没取到施法者或目标：" + TestSkills_describe(data));
+    return;
+  }
+
+  const cu = caster.handle;
+  const tu = target.handle;
+  if (cu === undefined || tu === undefined || GetUnitTypeId(tu) === 0) {
+    // 句柄失效就别往下走了 —— 拿废句柄去 `UnitDamageTarget` 是访问违例
+    log.warn("元素弹的施法者或目标句柄失效：" + TestSkills_describe(data));
+    return;
+  }
+
+  // 1) 声明这一发打出去的**元素**（管线靠它把伤害重新归类，并挂附着 / 判反应）
+  //
+  // ⚠️ `ELEMENT_BOLT_DAMAGE` 要**同时**传进这里和 `UnitDamageTarget`，两个数必须一样。
+  //    下面那行是**引擎**算的，它会按目标的护甲类型再乘一次攻/防类型表
+  //    （实测打英雄 ×0.5、打步兵 ×2.0）；这里传的才是**真正结算用的基数**。
+  //    只改一处就会出现「技能写 100、实际打出去 50」这种对不上的数。
+  ElementalReactionSystem.getInstance().registerSpellElement(
+    caster.id,
+    target.id,
+    element,
+    ELEMENT_BOLT_GAUGE,
+    ELEMENT_BOLT_DAMAGE
+  );
+
+  // 2) 造伤害。`DAMAGE_TYPE_COLD` 只是「**非物理**伤害类型」的一个入口 ——
+  //    真正决定它是火还是水的，是上面那行载荷声明。
+  //
+  // ⚠️ **不要改成 `DAMAGE_TYPE_NORMAL`（= 引擎的物理）**：那条路走 `addPhysical`
+  //    的护甲比例替换，**压根不问载荷** —— 症状正是本轮要修的那个
+  //    「元素伤害被静默算成物理」。
+  //
+  //    这里的 `ELEMENT_BOLT_DAMAGE` 只是喂给引擎、好让它派发出一次伤害事件
+  //    （事件是认领载荷的唯一时机），**结算不用它** —— 见上面那行的注释。
+  UnitDamageTarget(
+    cu,
+    tu,
+    ELEMENT_BOLT_DAMAGE,
+    false,
+    false,
+    ATTACK_TYPE_MAGIC(),
+    DAMAGE_TYPE_COLD(),
+    WEAPON_TYPE_WHOKNOWS()
+  );
+
+  log.info(
+    "元素弹「" + element + "」被释放：" + TestSkills_describe(data) +
+    " 基数=" + ELEMENT_BOLT_DAMAGE + " 元素量=" + ELEMENT_BOLT_GAUGE
+  );
 }
 
 /**

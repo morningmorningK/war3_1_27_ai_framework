@@ -37,6 +37,7 @@ import { BuffPolarity, BuffTypeId } from "./types";
 // ⚠️ **必须是 `import type`** —— 同 `StunBuff`，写成值导入会多一条
 // `actor → BuffManager → FreezeBuff → actor` 的 require 环。
 import type { Actor } from "../actor";
+import { FROZEN_SECONDS_PER_GAUGE } from "../element/reactionTable";
 
 export class FreezeBuff extends Buff {
   readonly typeId = BuffTypeId.FREEZE;
@@ -52,11 +53,31 @@ export class FreezeBuff extends Buff {
 
   /** 被冻结的单位。只能构造注入 —— `onApply()` / `onRemove()` 都不带参数。 */
   private readonly target: Actor;
+  /** 冻结本身提供的冰元素量，与剩余控制时间同步衰减。 */
+  readonly initialGauge: number;
+  /** 生成冻结的派发身份，防止同一击刚冻结就立即触发后续反应。 */
+  attachedBy?: object;
 
-  constructor(target: Actor, duration: number) {
+  constructor(target: Actor, duration: number, initialGauge: number = duration / FROZEN_SECONDS_PER_GAUGE) {
     // `NEGATIVE` → buff 栏显示成红色（`BuffBarUI.buffCategoryColor`）
     super(duration, BuffPolarity.NEGATIVE);
     this.target = target;
+    this.initialGauge = Math.max(0, initialGauge);
+  }
+
+  get gauge(): number {
+    if (this.duration <= 0 || this.isExpired()) return 0;
+    return this.initialGauge * Math.max(0, 1 - this.elapsed / this.duration);
+  }
+
+  /** 消耗冰元素量，等比例缩短冻结；调用方负责同步移除耗尽实例。 */
+  consumeGauge(amount: number): number {
+    const remaining = this.gauge;
+    if (!(amount > 0) || remaining <= 0) return 0;
+    const consumed = Math.min(remaining, amount);
+    this.elapsed = consumed >= remaining ? this.duration :
+      Math.min(this.duration, this.elapsed + this.duration * consumed / this.initialGauge);
+    return consumed;
   }
 
   onApply(): void {

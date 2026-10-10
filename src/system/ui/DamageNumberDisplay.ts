@@ -58,6 +58,15 @@
  *     最外层那一刀的数字最后。同一帧内三者的创建顺序就是照这个顺序。
  *   - **空间上**：起点比伤害数高一档（`SHATTER_RISE`），三串字各占一层互不重叠。
  *
+ * ## 元素反应公告（「蒸发」/「融化」）
+ *
+ * 触发元素反应时同样在目标头顶飘一句话（`DamageNumberDisplay_reaction`）。
+ * **版式与碎冰完全一致**（一句话、无数值、不抖、起点高一档），差别在来路：
+ * 碎冰走自建事件，反应**直接在 `ctx.hits[i].reactionId` 里**——那是分段着色已经在
+ * 用的同一份数据，再发一条事件等于把同一件事存两遍。颜色取触发反应的那个元素。
+ *
+ * 同次命中发生碎冰时，反应公告改用 50 高度，碎冰保持 70，避免两个表头重叠。
+ *
  * ## ⚠️ 优先级必须小于 `ShieldSystem` 的 10
  *
  * `ShieldSystem` 用 `priority: 10` 订阅，在回调里调 `data.setEventDamage(remaining)`
@@ -97,6 +106,10 @@ import { DamageTextManager, FloatDirection, colorHexOf } from "./DamageTexttag";
 // 拉进来。这里只要「上下文的交接槽位」与两个取色函数，都是轻的东西。
 import { DamageContext, findDamageContext, sumHits } from "src/system/combat/DamageContext";
 import { HEAL_COLOR, SHIELD_COLOR, colorize, elementColor } from "src/system/combat/damageConstants";
+// 反应表是**纯数据 + 纯函数**（只依赖 `stat`），与 `damageConstants` 同级，拉进来
+// 不会把 combat / element 的运行时模块卷进来。反应的中文名就在这张表里
+// （`DamagePipeline` 打战斗日志用的也是它 —— 两处若有各写一份名字，迟早会分叉）。
+import { REACTION_TABLE, ReactionId } from "src/system/element/reactionTable";
 
 const log = createLogger("DamageNumberDisplay");
 
@@ -117,10 +130,11 @@ const DAMAGE_TEXT_PRIORITY = 0;
  * 只飘本地玩家相关之后同屏并发本来就低，16 是**可调的旋钮**。
  *
  * ⚠️ **平时一次命中最多吃掉池里两个** —— 伤害本身 + 被盾吸掉的那部分。
- * 但**碎冰那一发最多能吃掉四个**：这一刀的伤害数、它的护盾数、「碎冰」两个字
- * （`onUnitShattered`），外加冰爆自己那一次派发带来的伤害数（可能再带一个护盾数，
- * 那就是五个）。四个同时出现时池里还剩 12 个，够用；池满了 `show()` 只是返回
- * false（静默丢弃），不会报错也不会卡，所以这里不必为碎冰再把池子翻倍。
+ * 但**碎冰那一发最多能吃掉五个**：这一刀的伤害数、它的护盾数、「碎冰」两个字
+ * （`onUnitShattered`）、元素反应公告（`DamageNumberDisplay_reaction`），
+ * 外加冰爆自己那一次派发带来的伤害数（可能再带一个护盾数，那就是六个）。
+ * 五个同时出现时池里还剩 11 个，够用；池满了 `show()` 只是返回
+ * false（静默丢弃），不会报错也不会卡，所以这里不必为这些公告再把池子翻倍。
  */
 const POOL_SIZE = 16;
 
@@ -173,6 +187,15 @@ const HEAL_RISE = 20;
 const SHATTER_RISE = 30;
 
 /**
+ * 元素反应公告（「蒸发」/「融化」）比伤害飘字**起点高多少**（世界单位）。
+ *
+ * 通常表头高度为 70。同次命中也发生碎冰时，将反应公告移到空档 50，
+ * 碎冰保持 70，不增加整体高度。
+ */
+const REACTION_RISE = 30;
+const REACTION_WITH_SHATTER_RISE = 10;
+
+/**
  * 伤害数的**角度抖动幅度**（度）：在本方向上左右各散开这么多。
  *
  * ## 为什么需要它
@@ -195,12 +218,12 @@ const FLOAT_SPREAD_DEG = 25;
 
 export class DamageNumberDisplay {
   /**
-   * 默认**关**（用户选定）。开关交给右上角的「伤害数字显示」按钮。
+   * 默认**开**（用户选定）。开关交给右上角的「伤害数字显示」按钮。
    *
    * 关着的开销是**零**：对象池根本不建，一个 frame 都不会多出来。
    * 首次开启时才延迟 0.01s 去建那 32 个 frame（见 `schedulePool`）。
    */
-  private static enabled = false;
+  private static enabled = true;
 
   /** 是否已经订阅过伤害事件（幂等守卫，热重载时防重复挂） */
   private static bound = false;
@@ -319,24 +342,22 @@ export class DamageNumberDisplay {
 
     const ctx = findDamageContext(data);
 
-    // 护盾吸收量 = **管线算完的值 − 扣过盾之后剩下的值**。
-    //
-    // 这两个数在这一次派发里同时读得到：`ctx.finalDamage` 是管线在 **100 层**写的，
-    // `data.damage` 是护盾在 **10 层**改小的，本层（**0**）最后跑。
-    // 所以**不需要 `ShieldSystem` 往外报数，也就不需要动那个文件**，
-    // 更不需要往 `GameEvent.ts` 里加事件类型。
-    //
-    // 前提是「100 与 0 之间除护盾外没有别的订阅者改过 `data.damage`」——
-    // 现在确实只有 `ShieldSystem` 一个。**将来若多一个改值的层，这里要跟着改**
-    // （否则它的改动会被算成「护盾吸收」）。
-    const absorbed = ctx === undefined ? 0 : ctx.finalDamage - data.damage;
+    // 括号数字显示实际减少的基础盾值，与护盾条一致。
+    // 吸收伤害与盾耗可能不同（同元素效率 / 蒸发 / 融化），不能由伤害差推算。
+    const shieldConsumed = ctx?.shieldConsumed ?? 0;
 
     const amount = Math.floor(data.damage);
     // 全额被盾挡下时 `data.damage` 是 0 —— 那时候**只飘护盾数字，不飘伤害数字**
     // （飘一个 "0" 没有意义）。
     const showDamage = amount >= 1;
-    const showShield = absorbed >= 1;
-    if (!showDamage && !showShield) return;
+    const showShield = shieldConsumed >= 1;
+
+    // 元素反应公告。**必须在下面那道提前返回之前算出来** —— 「这一发触发了什么反应」
+    // 与「有没有数字可飘」是两件独立的事：数值全被盾吃掉时反应照样发生过，
+    // 而反应恰恰是玩家最需要看见的那条信息。
+    const reaction = DamageNumberDisplay_reaction(ctx);
+
+    if (!showDamage && !showShield && reaction === undefined) return;
 
     // 自己打出去的 = 红；自己挨的 = 黄。打自己人时两者都成立，按红。
     // ⚠️ **这两个颜色现在只在兜底路径上出现** —— 拼得出分段串时一律走元素色
@@ -352,7 +373,7 @@ export class DamageNumberDisplay {
     //
     // 「破盾那一下」= `showDamage && showShield` 同时成立，也就是盾吸走一部分、
     // 剩下的真打到血。那时候屏幕上两个数并排，若一个灰一个彩，读起来像两件事；
-    // 同色之后是一句话：「这一刀打进来这么多，其中这么多被盾吃了」。
+    // 同色表示同一次命中：括号是消耗盾值，另一个数是真实生命伤害。
     //
     // 全额吸收时**保持浅灰** —— 那时没有伤害数字可跟（`showDamage` 为 false，
     // 下面的赋值根本不会执行），灰反而正好表示「全被盾吃了，血没掉」。
@@ -398,7 +419,7 @@ export class DamageNumberDisplay {
         //
         // **括号是给「分不清这两个数是什么关系」兜底的。** 全靠位置和颜色区分的话，
         // 战斗里两个数一闪而过，看到「45 白色」和「20 灰色」根本没空去推哪个是哪个。
-        // 括号一出，`(20)` 是吸走的、`45` 是真掉的血。
+        // 括号一出，`(20)` 是掉的盾值、`45` 是真掉的血。
         //
         // 颜色用 `shieldHex`：破盾那一下跟着伤害走，全额吸收时是浅灰。**括号负责
         // 「这是什么」，颜色负责「这属于哪一刀」** —— 两者管的是不同的事，
@@ -411,7 +432,7 @@ export class DamageNumberDisplay {
         // 而且反过来的样子很怪：`60!`（放大 + `!`）旁边跟一个正常大小、没有 `!` 的
         // `(20)`，颜色还一样，看着像渲染出了 bug。
         //
-        // ⚠️ **`!` 在括号外面**：`(20)!` 而不是 `(20!)`。括号是一对、圈住「被吸走的
+        // ⚠️ **`!` 在括号外面**：`(20)!` 而不是 `(20!)`。括号是一对、圈住「消耗的盾
         // 值」这个整体，`!` 修饰的是整个数（跟伤害那串 `60!` 形状对称）。
         // 塞进括号里会变成「吸走了 20! 点」这种读不通的东西。
         //
@@ -419,7 +440,7 @@ export class DamageNumberDisplay {
         // 的话，括号本身是默认色（白），数字两边挂两个白括号，看着像拼错的。
         // `!` 同理，分开写就会是一个白感叹号。
         DamageTextManager.show({
-          damage: Math.floor(absorbed),
+          damage: Math.floor(shieldConsumed),
           worldX: victim.x,
           worldY: victim.y,
           height: FLOAT_HEIGHT - SHIELD_DROP,
@@ -429,10 +450,34 @@ export class DamageNumberDisplay {
           scale: 0.8,
           fadeOut: true,
           richText: colorize(
-            "(" + Math.floor(absorbed) + ")" + (isCrit ? "!" : ""),
+            "(" + Math.floor(shieldConsumed) + ")" + (isCrit ? "!" : ""),
             shieldHex
           ),
           crit: isCrit,
+        });
+      }
+
+      // ---- 元素反应公告（「蒸发」/「融化」）----
+      //
+      // 与伤害数、护盾数**同一次派发、同一份上下文**：反应早在管线（100 层）里判完
+      // 并逐段记进 `ctx.hits[i].reactionId` 了，这里只是把它显示出来 —— 不重算、
+      // 不订阅新事件（理由见 `DamageNumberDisplay_reaction`）。
+      //
+      // 版式与「碎冰」逐条对齐：一句话、没有数值、不抖，起点比伤害数高一档。
+      if (reaction !== undefined) {
+        DamageTextManager.show({
+          // 有 `richText`，这个数**不参与渲染** —— 它只是 `DamageTextConfig` 的
+          // 兜底契约（必填），同 `onUnitShattered`。
+          damage: 0,
+          worldX: victim.x,
+          worldY: victim.y,
+          height: FLOAT_HEIGHT + (ctx?.shattered ? REACTION_WITH_SHATTER_RISE : REACTION_RISE),
+          direction: FloatDirection.UP,
+          speed: 80,
+          duration: 1.5,
+          scale: 0.8,
+          fadeOut: true,
+          richText: colorize(reaction.text, reaction.hex),
         });
       }
     } catch (e) {
@@ -543,6 +588,87 @@ export class DamageNumberDisplay {
       log.error(`飘碎冰字样失败：${e}`);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// 元素反应公告的取数
+// ---------------------------------------------------------------------------
+
+/**
+ * 从这次派发的各段命中里取出**触发过的元素反应**（去重后的中文名 + 一个颜色）。
+ * 没有反应就返回 `undefined`（= 不飘）。
+ *
+ * ## 为什么从 `ctx.hits` 取，而不是再发一条自建事件
+ *
+ * 「哪一段吃到了哪个反应」在管线里**已经逐段记在 `hits[i].reactionId` 上**，
+ * 分段着色用的就是同一份数据（见 `DamageNumberDisplay_text`）。再发一条
+ * `UNIT_REACTED` 等于把同一件事存两遍：D 阶段的剧变反应一旦只更新其中一边，
+ * 飘字和颜色就会对不上，而且不报错。
+ *
+ * 碎冰之所以是自建事件，是因为它**不在伤害管线里**（那是 `FreezeShatterSystem`
+ * 从冻结 buff 上判出来的），没有现成的载体 —— 两者的来路不同，不该照抄形状。
+ *
+ * ## 为什么可能不止一个
+ *
+ * 一次派发里每种元素各判一次反应（`ctx.reactionMemo`），所以一件遗物同时加火和水、
+ * 或技能多段带不同元素时可以是两个。全部收下来用「、」连起来 ——
+ * 只取第一个会让第二个反应在屏幕上凭空消失。
+ *
+ * ## 颜色取**触发反应的那个元素**（`hits[i].element`）
+ *
+ * 与碎冰取冰色是同一条理由：颜色说明「这是怎么回事」。取来袭元素的色而不是给每个
+ * 反应硬编一个色，是为了让这个表头和**紧挨着它的那个伤害数**同色 ——
+ * 两者本来就是同一件事。
+ *
+ * ## 取不到上下文时静默不飘
+ *
+ * `ctx === undefined` 是**正常路径**（重入，或管线没记下这一发，见
+ * `findDamageContext` 的注释）。那时候连分段颜色都没有，说明这一发的判定结果本来
+ * 就不完整 —— 宁可不飘，也不要按兜底值猜一个反应名出来。
+ */
+function DamageNumberDisplay_reaction(
+  ctx: DamageContext | undefined
+): { text: string; hex: string } | undefined {
+  if (ctx === undefined) {
+    return undefined;
+  }
+
+  const hits = ctx.hits;
+  // 一次派发里反应种类最多 = 元素数，`Set` 的规模小到可以忽略
+  const seen = new Set<ReactionId>();
+  let text = "";
+  let hex = "FFFFFF";
+
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    if (h === undefined || h.reactionId === undefined) {
+      continue;
+    }
+    if (seen.has(h.reactionId)) {
+      continue;
+    }
+    seen.add(h.reactionId);
+
+    const def = REACTION_TABLE[h.reactionId];
+    // `REACTION_TABLE` 的类型是 `Record<ReactionId, ReactionDef>`，今天**不可能**缺项
+    //（往 `ReactionId` 里加一个 id 而不补表，编译就过不去）。留着是给将来重构兜底：
+    // 宁可少飘一句话，也不要飘出一个 `undefined`。
+    if (def === undefined) {
+      continue;
+    }
+    if (text === "") {
+      text = def.name;
+      // 结晶按生成的元素护盾着色，而不是统一使用来袭岩元素的颜色。
+      hex = elementColor(def.shieldElement ?? h.element);
+    } else {
+      text = text + "、" + def.name;
+    }
+  }
+
+  if (text === "") {
+    return undefined;
+  }
+  return { text: text, hex: hex };
 }
 
 // ---------------------------------------------------------------------------

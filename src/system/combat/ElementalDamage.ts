@@ -16,8 +16,9 @@
  *       × (crit ? 1 + critDmg : 1)   // CRIT_RATE 掷骰，CRIT_DMG 默认 0.5
  *       × (1 - effResist)            // 元素用抗性−穿透；物理用护甲减伤−穿透
  *       × (1 + amplify)              // DAMAGE_AMPLIFY，独立乘区
+ *       × (1 + vuln)                 // elemVulnStat(element)，**受击方**的元素易伤
  *       × (1 - reduction)            // DAMAGE_REDUCTION，钳到 ≤0.8
- *       × reactionMultiplier         // 本轮恒 1
+ *       × reactionMultiplier         // none → 1；amplify → ratio×emAmplify；transform → emTransform
  * final = max(0, round(final))
  * ```
  *
@@ -26,10 +27,13 @@
  *
  * ## 剧变反应为什么单独一个分支
  *
- * `kind === "transform"`（超载 / 感电 / 超导…）的伤害**不吃加成、不暴击、不受擢升**，
- * 只由 `f(等级, 元素精通)` 决定 —— 这是它和增幅反应（蒸发 / 融化）的分水岭。
- * 本轮 `kind` 恒 `"none"`，两个分支走的是同一条路，但分叉现在就摆好，
- * 免得 D 阶段回头改所有调用点。
+ * `kind === "transform"`（超载 / 感电 / 超导 / 碎冰）的伤害**不吃加成、不暴击、
+ * 不受擢升** —— 前三项直接跳过，只有抗性、免伤和 `emTransform(元素精通)` 生效。
+ * 这是它和增幅反应（蒸发 / 融化）的分水岭。
+ *
+ * ⚠️ `transform` 说的是「**反应自己造的那一段**」的结算方式，不是「反应类别」。
+ * 触发增幅的**那一击本身**走 `amplify`；触发了剧变的那一击本身**仍是 `none`**
+ * （冻结挂 `FreezeBuff`，对那一击的伤害零影响）。详见 `DealInput.kind` 的注释。
  *
  * ## 物理伤害走「比例反算」（2026-10-05 定案）
  *
@@ -63,7 +67,20 @@
  * 负护甲（引擎其实是**增伤**）不在这条公式的射程内，见 `armorCorrectionRatio()`。
  */
 
-import { ElementId, StatId, StatType, elemDamageStat, elemResistStat } from "src/system/stat";
+import {
+  ElementId,
+  StatId,
+  StatType,
+  elemDamageStat,
+  elemResistStat,
+  elemVulnStat,
+} from "src/system/stat";
+import {
+  REACTION_TABLE,
+  ReactionId,
+  emAmplify,
+  emTransform,
+} from "src/system/element/reactionTable";
 import { ReactionKind } from "./DamageContext";
 
 /** 减伤上限。与 `StatSheet` 对 `DAMAGE_REDUCTION` 的钳制**必须一致**，否则两处各说各话 */
@@ -84,7 +101,46 @@ export interface DealInput {
   /** 结算基数。物理传什么见文件头那张表 */
   base: number;
   element: ElementId;
+  /**
+   * **这一段伤害**被反应改成什么样 —— 不是「触发了哪一类反应」。
+   *
+   * 三个取值说的是**两段不同的伤害**，这是理解它的关键：
+   *
+   *   - `"none"`（默认）—— 普通段，什么反应都没改它。
+   *     既包括「没触发反应」，也包括「触发了剧变但**来袭那一击本身**没被改」
+   *     （冻结就属这一类：效果是挂 `FreezeBuff`，那段伤害照旧是普通元素伤害）。
+   *   - `"amplify"` —— **来袭那一击**触发了增幅反应（蒸发/融化），倍率会乘上来。
+   *   - `"transform"` —— **剧变反应自己造的那一段**（`ReactionEffects.ts` 派发：
+   *     超载 / 超导 / 感电 / 碎冰）。它不是「来袭那一击」，是反应额外打出的第二段，
+   *     所以它的 `base` 是反应按 `transformBase(等级) × transformCoeff` 算的，
+   *     不是原攻击的基数。
+   *
+   * ⚠️ **前两者的主语是「来袭那一击」，第三者的主语是「反应自己那一段」。**
+   * 上一轮定的是「来袭那一击永远只可能是 `none|amplify`」—— 那句话仍然成立；
+   * 本轮补上另一半，不是把它推翻。
+   *
+   * 两者混用的后果不只是「标错」—— `transform` 会让 `dealRaw()` 跳过
+   * 元素加成 / 暴击 / 擢升，于是**那一发水弹/冰弹自己变成裸伤**，
+   * 不崩不报错，只是数字对不上。所以管线只在自己确实在结算剧变段时才传 `transform`
+   * （`DamagePipeline_dealElemental` 的 `segmentKind` 参数，且**只有**认领到
+   * `PendingSpellElement.kind === "transform"` 的载荷时才是它）。
+   */
   kind: ReactionKind;
+  /**
+   * 反应 id（`todo §2.2` D 阶段）。**可选** —— 这是刻意的：
+   *
+   *   - 无反应时不需要；
+   *   - 更重要的是 `ElementalDamageTestExample.ts` 有 6 处 `DealInput` 字面量、
+   *     40 条断言**没带这个字段**，设成必填会全线编译失败。
+   *
+   * ⚠️ 剧变反应（如冻结）**会带 id 但 `kind` 是 `"none"`** —— 那是正确组合，
+   * 表示「触发了冻结，但这一段伤害没被改动」。
+   *
+   * ⚠️ **只传 id，不传倍率**。倍率（`REACTION_TABLE[id].ratio × emAmplify(EM)`）
+   * 必须留在 `reactionMultiplier()` 内部算 —— 让调用方能塞任意倍率，
+   * 就是最容易产生「静默错数」的形状（见文件头第 1 条理由）。
+   */
+  reactionId?: ReactionId;
   /** 能不能暴击。剧变反应内部会强制不暴击，这个标志是给增幅/普通用的 */
   canCrit: boolean;
   /**
@@ -94,6 +150,41 @@ export interface DealInput {
   critRoll: number;
   /** 有效减伤率 0~1。元素传 `effectiveElementResist()`，物理见文件头 */
   effectiveResist: number;
+  /**
+   * 元素易伤（`elemVulnStat(element)`）—— **受击方**的属性，「受到的该元素伤害增加」。
+   *
+   * ## ⚠️ 为什么由调用方传，而不是函数内部现取
+   *
+   * `stats.get()` 读的是**实时**的 `StatSheet.getFinal()`。而「激化」是在
+   * `resolveElement()` 里给目标挂上 buff 的 —— 内部现取就会读到**刚刚挂上去**的那条，
+   * 于是「触发激化的那一发**自己**也吃了增伤」。口径要的是「**后续**雷 / 草攻击」，
+   * 所以管线必须在 `resolveElement` **之前**把值取好、再传进来
+   * （`DamagePipeline_dealElemental` 的 `vulnBefore`）。
+   *
+   * ## 可选是刻意的
+   *
+   * 缺省 = 现取（老行为不变）。`ElementalDamageTestExample.ts` 有 6 处 `DealInput`
+   * 字面量没带这个字段，设成必填会全线编译失败。不经过反应判定的路径
+   * （数值自测、将来可能的遗物追加伤害）不必操心它。
+   *
+   * ⚠️ **只对非剧变段生效**（与元素加成 / 暴击 / 擢升同一个 `if` 块）——
+   * 用户 2026-10-08 定的口径：激化不作用于剧变伤害段。
+   */
+  elementalVuln?: number;
+}
+
+/**
+ * 取这一段的元素易伤：调用方预取的优先，否则现读 `stats`。
+ *
+ * 抽成函数是为了让「为什么有时要预取」这件事**只有一个出口** —— 见
+ * `DealInput.elementalVuln` 的注释（触发激化的那一发不能吃自己挂的增伤）。
+ */
+function ElementalDamage_elementalVuln(input: DealInput, stats: DamageCalcStats): number {
+  const preset = input.elementalVuln;
+  if (preset !== undefined) {
+    return preset;
+  }
+  return stats.get(elemVulnStat(input.element));
 }
 
 export interface DealResult {
@@ -154,12 +245,13 @@ export function dealRaw(input: DealInput, stats: DamageCalcStats): DealRawResult
 
   if (!isTransform) {
     dmg *= 1 + stats.get(StatType.DAMAGE_AMPLIFY);
+    dmg *= 1 + ElementalDamage_elementalVuln(input, stats);
   }
 
   // 全局减伤，所有人吃
   dmg *= 1 - clampRange(stats.get(StatType.DAMAGE_REDUCTION), 0, MAX_DAMAGE_REDUCTION);
 
-  dmg *= reactionMultiplier(input.kind, stats);
+  dmg *= reactionMultiplier(input.kind, stats, input.reactionId);
 
   return { amount: dmg, isCrit };
 }
@@ -178,16 +270,62 @@ export function deal(input: DealInput, stats: DamageCalcStats): DealResult {
 }
 
 /**
- * 元素反应倍率。**本轮恒返回 1** —— 反应本身属 todo §2.2 的 D 阶段。
+ * 元素反应倍率。**增幅/剧变两条精通曲线在整个仓里只有这里与 `emTransform()` 两个入口。**
  *
- * 留着这个空函数而不是把 1 写死在 `deal()` 里，是为了让 D 阶段的接入点**只有一个**：
- * 到时候在这里读 `ELEMENTAL_MASTERY` 与等级即可，`deal()` 一行都不用动。
+ * ```
+ * none      → 1
+ * amplify   → REACTION_TABLE[id].ratio × emAmplify(EM)     // 蒸发 2.0/1.5、融化 2.0/1.5
+ * transform → emTransform(EM)                              // 剧变反应**自身**那段伤害的系数
+ * ```
+ *
+ * ## ⚠️ `transform` 分支今天**不可达**，且不该被「改成可达」
+ *
+ * `kind` 描述的是「**这一段伤害**被反应改成什么样」，而剧变反应对**来袭那一击**
+ * 零影响 —— 所以 `DamagePipeline_dealElemental` 只透传 `amplify`，
+ * `DealInput.kind` 永远不可能是 `transform`（唯一构造出 `transform` 的调用点是
+ * 数值自测里手写的字面量）。
+ *
+ * 这条分支保留给 D+ 阶段「剧变反应自己的伤害段」：那时它会以
+ * `{ base: 反应基础伤害 × 等级系数, kind: "transform" }` 的形式走到这里，
+ * 由本分支补上精通项。**用 `emTransform` 而不是 `emAmplify`** —— 剧变系数大得多
+ * （EM=200 时 2.45 vs 1.35），写错了不会崩，只是数值差两倍多。
  *
  * ⚠️ `ELEMENTAL_MASTERY` **只在这里生效，不进普通伤害** —— 这是硬口径，
  * 别顺手把它加到 `deal()` 的乘区里去。
+ *
+ * ⚠️ **`amplify` 但没给 `reactionId` → 返回 1**，绝不返回 `NaN` / `0`。
+ * 缺 id 是调用方的 bug，但反应热路径上「静默给 0」比「不放大」危险得多。
+ * 同理，id 查不到定义也退回 1。
+ *
+ * ⚠️ 倍率**只在这里算**，不接受调用方传入 —— 见 `DealInput.reactionId` 的注释。
  */
-export function reactionMultiplier(kind: ReactionKind, stats: DamageCalcStats): number {
-  return 1;
+export function reactionMultiplier(
+  kind: ReactionKind,
+  stats: DamageCalcStats,
+  reactionId?: ReactionId
+): number {
+  if (kind === "none") {
+    return 1;
+  }
+
+  const em = stats.get(StatType.ELEMENTAL_MASTERY);
+
+  if (kind === "amplify") {
+    if (reactionId === undefined) {
+      return 1;
+    }
+    const def = REACTION_TABLE[reactionId];
+    if (def === undefined) {
+      return 1;
+    }
+    // `ratio` 是可选字段（剧变反应没有它）。缺失时退回 1 = 不放大，不给 NaN。
+    if (def.ratio === undefined) {
+      return 1;
+    }
+    return def.ratio * emAmplify(em);
+  }
+
+  return emTransform(em);
 }
 
 // ===========================================================================

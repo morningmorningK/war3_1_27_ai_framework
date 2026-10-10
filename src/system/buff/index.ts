@@ -1,6 +1,12 @@
 export { Buff } from "./Buff";
 export { BuffManager } from "./BuffManager";
-export { ShieldBuff } from "./ShieldBuff";
+export { ShieldBuff, ElementalShieldBuff, CrystallizeShieldBuff } from "./ShieldBuff";
+export type { ShieldElement, ElementalShieldElement, ShieldSourceKind } from "./ShieldRules";
+export { elementalShieldAbsorptionEfficiency, elementalShieldCounter, SHIELD_ELEMENT_NAMES } from "./ShieldRules";
+export { crystallizeAbsorptionEfficiency, CRYSTAL_SAME_ELEMENT_EFFICIENCY,
+  CRYSTAL_COUNTER_CONSUMPTION, CRYSTAL_COUNTER_ELEMENTS } from "./ShieldRules";
+export { SHIELD_EFFECT_MODELS } from "./ShieldEffects";
+export type { ShieldEffectStyle, ShieldElementStyle } from "./ShieldEffects";
 export { StunBuff } from "./StunBuff";
 export { FreezeBuff } from "./FreezeBuff";
 export { SlowBuff, RootBuff, SLOW_MULTIPLIER, ROOT_MULTIPLIER } from "./ControlBuffs";

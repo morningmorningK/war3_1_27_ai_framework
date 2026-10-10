@@ -21,7 +21,13 @@
 import { Actor } from "src/system/actor";
 import { ElementId } from "src/system/stat";
 import { UnitDamageEventData } from "src/system/event/GameEvent";
+// ⚠️ `element/reactionTable` 是**纯数据 + 纯函数**（只依赖 `stat`），不摸 combat，
+// 所以这里 import 它不会成环。`ReactionOutcome` 放在本文件（而不是
+// `ElementalReactionSystem`）就是为了让 combat 与 element 两边共用一个定义，
+// 且 element 那一侧不必反过来 import combat 的运行时模块。
+import { ReactionId } from "src/system/element/reactionTable";
 import { DAMAGE_TYPE_NORMAL_INDEX } from "./damageConstants";
+import type { ShieldReaction } from "src/system/buff/ShieldBuff";
 
 /** 一段伤害的来源。用于事后归因（「这一发是谁打的」），不影响结算 */
 export type HitSource = "native" | "relic" | "reaction";
@@ -47,6 +53,13 @@ export interface DamageHit {
   amount: number;
   isCrit: boolean;
   source: HitSource;
+  /**
+   * 这一段吃到了哪个元素反应（没吃到就没有）。**逐段归因** ——
+   * 想看「这一发整体有没有反应」看 `ctx.reactionKind`，那是汇总。
+   */
+  reactionId?: ReactionId;
+  /** 护盾反应的盾耗规则；不会增幅破盾后的生命伤害。 */
+  shieldReaction?: ShieldReaction;
 }
 
 /**
@@ -60,8 +73,16 @@ export interface DamageHit {
  *      不会崩、不会报错，只在某天有人发现「怎么打不死人」。
  *   2. `hits` 里每条的 `amount` 是**已走完乘区**的值，`isCrit` 也是定局。
  *      让遗物直接写，等于把这套内部结构变成公共契约，以后改不动。
- *   3. D 阶段的元素反应要追加「剧变」段（不吃加成、不暴击），那时加一个
- *      `addTransform()` 即可 —— 遗物那边的调用点一行都不用动。
+ *   3. 元素反应的「剧变」段（不吃加成、不暴击）是**另一条口子**，不在这里。
+ *
+ *      ⚠️ 这里原本写着「到时候加一个 `addTransform()` 即可」—— **实际没这么做**
+ *      （2026-10-07）。剧变段不是从**来袭那一击**的管线里追加的，它是**独立的一发**
+ *      `UnitDamageTarget`：反应系统 `registerSpellElement(..., kind:"transform")`
+ *      声明 → 紧接着派发伤害 → 管线在 `addNonPhysicalNative` 认领到时把 `kind`
+ *      透传给 `dealElemental` 的 `segmentKind`。
+ *      这样**遗物那边的调用点确实一行都没动**（这一条实现了），但多出来的好处是
+ *      剧变段有自己完整的 `DamageContext`：独立飘字、独立日志、独立抗性/免伤结算。
+ *      把两段塞进同一个 `ctx` 反而做不到这些。
  */
 export interface DamageDealer {
   /**
@@ -72,20 +93,41 @@ export interface DamageDealer {
    *                火伤加成 / 暴击 / 目标火抗 / 免伤会自动叠上去。
    *                不传 `deal()` 算好的结果，理由见上面第 1 条。
    * @param canCrit 能不能暴击，**默认能**。剧变反应传 `false`（它不吃暴击）
+   * @param gauge   本次附着的元素量（U），**默认 1U**。
+   *                它只影响「挂上去的附着有多厚」，不影响这一段伤害的数值 ——
+   *                「+15 火伤」传 `15`，附着量按默认 1U 走即可。
    */
-  add(element: ElementId, base: number, canCrit?: boolean): void;
+  add(element: ElementId, base: number, canCrit?: boolean, gauge?: number): void;
 }
 
 /**
- * 元素反应类别。**本轮恒 `"none"`** —— 只留接口，反应本身属 D 阶段。
+ * 元素反应类别。**实测已在用**（2026-10-07：增幅是蒸发/融化，剧变是冻结/超载/超导/感电）。
  *
+ * - `none` —— 没反应（或剧变反应对**来袭那一击**零影响，如冻结）
  * - `amplify`（增幅：蒸发 / 融化）—— 加成、暴击、擢升**全生效**，再乘反应倍率
- * - `transform`（剧变：超载 / 感电 / 超导…）—— **不乘**加成、**不暴击**、不受擢升，
- *   只由 `f(等级, 元素精通)` 定
+ * - `transform`（剧变：超载 / 感电 / 超导 / 碎冰）—— **不乘**加成、**不暴击**、
+ *   不受擢升，只由 `transformBase(等级) × 系数 × emTransform(元素精通) × 抗性 × 免伤` 定
  *
- * 这两条的差别是公式级的分叉，所以形状现在就分开，免得 D 阶段回头改所有调用点。
+ * 这两条的差别是公式级的分叉，所以 `dealRaw()` 里是两条独立分支。
  */
 export type ReactionKind = "none" | "amplify" | "transform";
+
+/**
+ * 一次元素施加的判定结果。**由 `ElementalReactionSystem.resolve()` 产出**，
+ * 定义放在这里是为了让 combat / element 两侧共用同一个类型（见文件头 import 那处注释）。
+ */
+export interface ReactionOutcome {
+  kind: ReactionKind;
+  /** 有值代表反应来自护盾，单位附着不参与该次判定。 */
+  shieldReaction?: ShieldReaction;
+  /** 触发了哪个反应。`kind !== "none"` 时才有；`amplify` 缺它会让倍率退回 1（防御） */
+  id?: ReactionId;
+  /**
+   * 这次反应从附着上**扣掉了多少元素量**（U）。只有 `kind !== "none"` 时才有意义。
+   * 只给日志/调试看，**不参与任何结算** —— 扣多少已经在 `resolve()` 里扣完了。
+   */
+  consumed?: number;
+}
 
 export interface DamageContext {
   target: Actor | undefined;
@@ -118,9 +160,25 @@ export interface DamageContext {
   hits: DamageHit[];
   /** 本次是否有任意一段暴击 */
   isCrit: boolean;
+  /**
+   * 本次**是否发生过任意反应**的汇总。⚠️ **不是「哪一段反应了」** ——
+   * 想知道是哪一段、哪个反应，看 `hits[i].reactionId`。这里只回答「这一发有没有反应过」。
+   */
   reactionKind: ReactionKind;
+  /**
+   * 本次派发内「**每个元素只判定一次反应**」的备忘。键 = 元素，值 = 那次 `resolve()` 的结果。
+   *
+   * ⚠️ **少了它就会重复消耗附着**：一次命中里若有两段同元素伤害（遗物连加两次火、
+   * 或技能多段），每段各 `resolve` 一次 = 附着被扣两次、反应被算两次 → 数值翻倍。
+   * 有了备忘，同元素的第二段直接复用第一段的判定结果（倍率一样，但附着只扣一次）。
+   */
+  reactionMemo: Map<ElementId, ReactionOutcome>;
   /** 最终写回引擎的值 */
   finalDamage: number;
+  /** 本次事件实际消耗的基础盾值，由 ShieldSystem 写入，供括号漂浮字显示。 */
+  shieldConsumed?: number;
+  /** 本次事件发生碎冰，反应漂浮字据此错开高度。 */
+  shattered?: boolean;
 }
 
 /**
@@ -161,6 +219,8 @@ export function captureDamageContext(data: UnitDamageEventData): DamageContext {
     hits: [],
     isCrit: false,
     reactionKind: "none",
+    // 每次派发一张新表 —— 上一发的判定结果绝不能漏到下一发
+    reactionMemo: new Map<ElementId, ReactionOutcome>(),
     finalDamage: nativeDamage,
   };
 }

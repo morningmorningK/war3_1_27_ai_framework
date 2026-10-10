@@ -425,6 +425,8 @@ function CreateItems takes nothing returns nothing
 	call CreateItem('frhg', - 1959.0, 6.3)
 	call CreateItem('gcel', - 2001.7, - 73.4)
 	call CreateItem('gcel', - 1957.0, - 75.8)
+	call CreateItem('I005', - 1687.7, 153.8)
+	call CreateItem('I006', - 2371.1, 48.9)
 endfunction
 function CreateUnits takes nothing returns nothing
  local unit u

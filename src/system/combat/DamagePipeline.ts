@@ -18,7 +18,10 @@
  * - 元素段：遍历攻击方的遗物，逐个调 `onDealDamage`，由它通过 `deal.add()`
  *   声明「加哪一段」。Step 4 那个 `DEBUG_FIRE_ON_ATTACK` 临时开关已删 ——
  *   现在由 `elementalEmber` 这件真遗物驱动。
- * - 非物理伤害（技能等）：**原样放行**，理由见 `DamagePipeline_compute()`。
+ * - 非物理伤害（技能等）：先 `claimSpellElement()` 认领施法载荷，认领到就走元素
+ *   乘区 + 反应判定，认领不到原样放行。理由见 `DamagePipeline_addNonPhysicalNative()`。
+ * - **元素反应**：`dealElemental` 里先 `resolve()` 判定、再走完整乘区。
+ *   每发每元素只判一次（`ctx.reactionMemo`），见 `DamagePipeline_resolveElement()`。
  *
  * ## 为什么不取整
  *
@@ -45,7 +48,16 @@
  */
 
 import { Actor } from "src/system/actor";
-import { ELEMENT_COUNT, ELEM_RES_BASE, ElementId, StatId, StatSheet, StatType } from "src/system/stat";
+import {
+  ELEMENT_COUNT,
+  ELEM_RES_BASE,
+  ELEM_VULN_BASE,
+  ElementId,
+  StatId,
+  StatSheet,
+  StatType,
+  elemVulnStat,
+} from "src/system/stat";
 // ⚠️ **直连文件，不走 `src/system/relic` 那个 barrel。** barrel 会连带拉进
 // `registerDefaultContent` → 全部遗物定义 → `elementalEmber` → `combat`，
 // 与本文件形成运行时的环。`RelicSystem.ts` 自己只依赖 actor / event / stat，不摸 combat。
@@ -53,6 +65,9 @@ import { RelicSystem } from "src/system/relic/RelicSystem";
 import type { RelicInventoryItem } from "src/system/relic/types";
 import { GameEventHandler, gameEvents } from "src/system/event";
 import { UnitDamageEventData } from "src/system/event/GameEvent";
+import { ElementalReactionSystem } from "src/system/element/ElementalReactionSystem";
+import { REACTION_TABLE, ReactionId } from "src/system/element/reactionTable";
+import { ChatBoxUI } from "src/system/ui/ChatBoxUI";
 import { UNIT_STATE_DEFEND_WHITE } from "src/constants/game/units";
 import { createLogger } from "src/utils/logger";
 import { DAMAGE_PIPELINE_PRIORITY } from "./damageConstants";
@@ -60,6 +75,9 @@ import {
   captureDamageContext,
   DamageContext,
   DamageDealer,
+  HitSource,
+  ReactionKind,
+  ReactionOutcome,
   rememberDamageContext,
   sumHits,
 } from "./DamageContext";
@@ -250,11 +268,33 @@ function DamagePipeline_settle(data: UnitDamageEventData, ctx: DamageContext): v
  *   2. 魔兽的 HP 本来就是浮点 —— 引擎自己写进去的就是 `45.4545` 这种数。
  *      取整是**展示**问题，归 `DamageNumberDisplay` 管。
  *
- * ## 非物理为什么原样放行
+ * ## 非物理：先问「施法载荷」，问不到才原样放行
  *
- * 原生事件里**没有任何东西能告诉我们这是什么元素**。元素归属必须由施法者/遗物
- * 显式声明（那是 C/D 阶段的事）。凭空挑一个元素，只会造出「火球吃到了火伤加成」
- * 这种看着合理、实际毫无依据的行为 —— 不如老实当它是「未分类伤害」原样过。
+ * 原生事件里**没有任何东西能告诉我们这是什么元素**，所以元素归属只能由
+ * **施法者显式声明**（`registerSpellElement` → `claimSpellElement` 认领，见
+ * `DamagePipeline_addNonPhysicalNative`）。认领到就走完整元素乘区 + 反应判定；
+ * 认领不到才原样放行 —— 凭空挑一个元素只会造出「火球吃到了火伤加成」这种
+ * 看着合理、实际毫无依据的行为。
+ *
+ * ## ⚠️ 元素伤害的基数**不能读 `ctx.nativeDamage`** —— 那是引擎削过的值
+ *
+ * 2026-10-07 实测：`A018` 火弹声明 100 点，
+ * `UnitDamageTarget(cu, tu, 100, false, false, ATTACK_TYPE_MAGIC(), DAMAGE_TYPE_COLD(), …)`，
+ * 管线在这一层读到的 `nativeDamage`，**打英雄护甲是 50、打步兵（大型护甲）是 200**。
+ *
+ * 原因不是护甲值 —— memory `wc3-damage-event-semantics` 的 P6 已经验过「27 个
+ * damageType 索引里只有 4 会被护甲削」，`DAMAGE_TYPE_COLD` 是 9，不吃护甲。
+ * 是 `(6) ATTACK_TYPE` 那张**攻/防类型表**插在中间：magic 攻击 vs 英雄 ×0.5、
+ * vs 大型 ×2.0，两个读数正好落在那一行上（P6 那一轮全程用 `ATTACK_TYPE_NORMAL`，
+ * 它对任何护甲都是 1.0，所以没照出来）。四倍差距，而且**照着目标的护甲类型变**。
+ *
+ * 这与 `todo §2.2.3` 第 1 条（元素伤害自成一套、**不与魔兽原生规则混算**）直接冲突，
+ * 所以定下的口径是：**基数一律取施法时声明的值**（`PendingSpellElement.base`，
+ * 经 `registerSpellElement` 第 5 个参数传进来），`ctx.nativeDamage` 只留给
+ * 「没声明元素的原生伤害」原样放行那一条路用。
+ *
+ * ⚠️ 这条口径下，目标身上的**原生减免（魔法免疫 / 抗性皮肤之类）也不再作用于元素伤害**
+ * —— 那是设计取舍：元素伤害要能自己走 `ELEM_RESIST` 那套，否则两套减伤会叠。
  */
 function DamagePipeline_compute(ctx: DamageContext): number {
   const stats = DamagePipeline_statsFor(ctx);
@@ -284,18 +324,249 @@ function DamagePipeline_compute(ctx: DamageContext): number {
   if (ctx.isPhysical) {
     DamagePipeline_addPhysical(ctx, stats, critRoll);
   } else {
-    ctx.hits.push({
-      element: "physical",
-      base: ctx.nativeDamage,
-      amount: ctx.nativeDamage,
-      isCrit: false,
-      source: "native",
-    });
+    DamagePipeline_addNonPhysicalNative(ctx, stats, critRoll);
   }
 
   DamagePipeline_runRelicHooks(ctx, stats, critRoll);
 
   return sumHits(ctx);
+}
+
+/**
+ * 非物理的原生伤害（技能等）。
+ *
+ * ## 为什么先问「施法载荷」
+ *
+ * 原生伤害事件里**没有任何元素信息** —— 光看事件，一发火球和一发冰箭长得一模一样。
+ * 所以元素归属只能由**施法者在造伤害之前**显式声明：技能 handler 先
+ * `registerSpellElement(sourceId, targetId, element, gauge)`，紧接着
+ * `UnitDamageTarget(...)` **同步**派发伤害事件，这一层再 `claimSpellElement()` 认领。
+ *
+ * - **认领到** → 走 `dealElemental`：这段伤害有了元素归属，走完整乘区（元素加成 /
+ *   暴击 / 抗性 / 免伤 / 反应倍率），并且**能触发元素反应**。
+ * - **没认领到** → **原样放行**（见下面那段注释）：宁可当它是「未分类伤害」，
+ *   也不要凭空挑一个元素 —— 那会造出「火球吃到了火伤加成」这种看着合理、
+ *   实际毫无依据的行为。
+ */
+function DamagePipeline_addNonPhysicalNative(
+  ctx: DamageContext,
+  stats: DamageCalcStats,
+  critRoll: number
+): void {
+  const src = ctx.source;
+  const tgt = ctx.target;
+  if (src !== undefined && tgt !== undefined) {
+    const claimed = ElementalReactionSystem.getInstance().claimSpellElement(src.id, tgt.id);
+    if (claimed !== undefined) {
+      DamagePipeline_dealElemental(
+        ctx,
+        stats,
+        critRoll,
+        claimed.element,
+        // 基数取**载荷里声明的值**，不是 `ctx.nativeDamage`。
+        // 引擎给的值已经过魔兽那张攻/防类型表（实测：同一发声明 100 的火弹，
+        // 打英雄护甲给 50、打大型护甲给 200），拿它当基数等于让元素伤害跟着目标的
+        // 护甲类型走 —— 与 `todo §2.2.3` 第 1 条冲突。理由详见文件头那一节。
+        claimed.base,
+        claimed.gauge,
+        true,
+        // 剧变反应自己造的那一段用 `HitSource."reaction"` 归类（飘字/战斗日志据此区分），
+        // 普通技能载荷仍是 `"native"`。
+        claimed.kind === "transform" ? "reaction" : "native",
+        claimed.kind
+      );
+      return;
+    }
+  }
+
+  // 未声明元素的原生非物理伤害：**原样放行**，逐位等于引擎算好的值。
+  // ⚠️ 这里 `element` 填 `"physical"` 是历史口径 —— 它表示「未分类」，不是「物理」。
+  // 别据此去读物理加成/护甲穿透。
+  ctx.hits.push({
+    element: "physical",
+    base: ctx.nativeDamage,
+    amount: ctx.nativeDamage,
+    isCrit: false,
+    source: "native",
+  });
+}
+
+// ===========================================================================
+// 元素段（含反应判定）
+// ===========================================================================
+
+/**
+ * 判定某个元素在**本次派发**里吃到什么反应 —— **每发每元素只判一次**。
+ *
+ * ## 为什么必须备忘
+ *
+ * `resolve()` 会**消耗附着**。一次命中里若有两段同元素伤害（遗物连加两次火、
+ * 技能多段），每段各判一次 = 附着被扣两次、反应被算两次 → 数值翻倍。
+ * 备忘挂在 `ctx` 上（一次派发一张新表），所以同元素的第二段直接复用第一段的结果：
+ * 倍率一样，附着只扣一次。
+ *
+ * ## 反应日志为什么不打在这里
+ *
+ * 日志要带**伤害数值**（`todo §2.2.3`），而伤害要等 `dealRaw()` 走完乘区才算得出来 ——
+ * 这个函数只负责判定，拿不到那个数。所以日志在 `dealElemental()` 里打，
+ * 但用「**是不是这次命中新建的判定结果**」把「每发每元素只打一条」这条约束守住
+ * （见那里的 `fresh`）。
+ */
+function DamagePipeline_resolveElement(
+  ctx: DamageContext,
+  element: ElementId,
+  gauge: number
+): ReactionOutcome {
+  const memo = ctx.reactionMemo;
+  const cached = memo.get(element);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const src = ctx.source;
+  const sourceId = src === undefined ? 0 : src.id;
+  // 护盾实际扣减在优先级 10。先预扣本次事件前面的段，避免物理段已破盾后
+  // 后续元素段仍误用护盾元素。嵌套伤害已扣掉的值体现在 shield.current 中。
+  const shield = ctx.target?.buffManager.getShieldBuffs().find(sh => !sh.isDepleted() && !sh.isExpired());
+  let shieldRemaining = shield?.current;
+  if (shield !== undefined && shieldRemaining !== undefined) {
+    for (let i = 0; i < ctx.hits.length; i++) {
+      const hit = ctx.hits[i];
+      const multiplier = hit.shieldReaction?.shieldId === shield.id
+        ? hit.shieldReaction.consumptionMultiplier : undefined;
+      shieldRemaining -= hit.amount * shield.damageConsumption(hit.element, multiplier);
+    }
+  }
+  // `ctx` 本身就是「这次派发」的身份 token —— `ElementalAuraBuff.attachedBy` 存它，
+  // 用来防止「同一发打出的两种元素互相反应」。
+  const outcome = ElementalReactionSystem.getInstance().resolve(
+    sourceId,
+    ctx.target,
+    element,
+    gauge,
+    ctx,
+    shieldRemaining
+  );
+  memo.set(element, outcome);
+  return outcome;
+}
+
+/**
+ * 结算**一段元素伤害**：先判定反应，再走 `dealRaw` 的完整乘区，最后记一段 hit。
+ *
+ * `element` 必须是**真实元素**（不是 `"physical"`）—— 物理段走 `addPhysical` 那条路，
+ * 它的护甲项是「比例替换」，与这里完全不同。
+ */
+function DamagePipeline_dealElemental(
+  ctx: DamageContext,
+  stats: DamageCalcStats,
+  critRoll: number,
+  element: ElementId,
+  base: number,
+  gauge: number,
+  canCrit: boolean,
+  source: HitSource,
+  segmentKind: ReactionKind = "none"
+): void {
+  // 「这次命中是不是**新建**的判定结果」—— 备忘里已经有同元素的判定就是复用的。
+  // 只有新建的那一次才打日志，否则一件遗物连加两次火会刷两条一样的。
+  const fresh = ctx.reactionMemo.get(element) === undefined;
+
+  // ⚠️ **必须在 `resolveElement` 之前取。** 「激化」是在 `resolve()` 里给目标挂 buff 的，
+  // 而 `stats.get()` 读的是**实时**的 `StatSheet.getFinal()` —— 判定之后再取，
+  // 触发激化的**那一发自己**就会吃到刚挂上的增伤。口径要的是「**后续**雷 / 草攻击」。
+  //
+  // 剧变段（`segmentKind === "transform"`）在这里读了也不生效：`dealRaw` 里那一项
+  // 在 `if (!isTransform)` 块内（用户口径：激化不作用于剧变伤害段）。
+  const vulnBefore = stats.get(elemVulnStat(element));
+
+  const outcome = DamagePipeline_resolveElement(ctx, element, gauge);
+
+  const r = dealRaw(
+    {
+      base,
+      element,
+      // ⚠️ **只透传 `amplify`，剧变一律降成 `none`** —— 这里是最容易静默吃掉
+      // 整段乘区的一行。`dealRaw()` 见到 `kind === "transform"` 会**跳过元素加成 /
+      // 暴击 / 擢升**，而冻结（水+冰）正是 `transform`；照原样透传的话，那发水弹
+      // 打出冻结的同时**自己也退化成裸伤**，不崩、不报错，只是数字对不上。
+      //
+      // 语义：`DealInput.kind` 回答「**这一段伤害**被反应改成什么样」，不是
+      // 「触发了哪一类反应」。剧变反应对来袭那一击**零影响** —— 冻结的效果是挂
+      // `FreezeBuff`（在 `resolve()` 里就做完了），碎冰那一段伤害另行结算。
+      // 反应类别本身照旧用 `outcome.kind`（下面的汇总位与日志）。
+      //
+      // ⚠️ 上面那段说的是「**来袭那一击**」；`segmentKind === "transform"` 说的是
+      // **另一半** —— 剧变反应自己造的那一段（`ReactionEffects.ts` 派发）。
+      // 两段是不同的伤害、不同的 `DamageContext`，别把两句话当成互相矛盾。
+      kind: segmentKind === "transform"
+        ? "transform"
+        : (outcome.kind === "amplify" && outcome.shieldReaction === undefined ? "amplify" : "none"),
+      // ⚠️ 只传 id，不传倍率 —— 倍率（`REACTION_TABLE[id].ratio × emAmplify(EM)`）
+      // 留在 `reactionMultiplier()` 内部算，见 `DealInput.reactionId` 的注释。
+      reactionId: outcome.id,
+      canCrit,
+      critRoll,
+      effectiveResist: effectiveElementResist(stats, element),
+      // 上面预取的易伤（判定**之前**的值）—— 别改成现取，理由见那一行的注释
+      elementalVuln: vulnBefore,
+    },
+    stats
+  );
+
+  ctx.hits.push({
+    element,
+    base,
+    amount: r.amount,
+    isCrit: r.isCrit,
+    source,
+    reactionId: outcome.id,
+    shieldReaction: outcome.shieldReaction,
+  });
+  if (r.isCrit) {
+    ctx.isCrit = true;
+  }
+  // 汇总位：**只要有任意一段反应过就算**。想知道是哪一段，看 `hits[i].reactionId`。
+  if (outcome.kind !== "none") {
+    ctx.reactionKind = outcome.kind;
+  }
+
+  // 日志（`todo §2.2.3`：反应类型 + 消耗元素量 + 伤害数值）。**只在新建判定那一次打**。
+  if (fresh && outcome.kind !== "none" && outcome.id !== undefined) {
+    DamagePipeline_logReaction(outcome.id, outcome.consumed, r.amount, outcome.shieldReaction?.consumptionMultiplier,
+      outcome.shieldReaction !== undefined);
+  }
+}
+
+/**
+ * 反应战斗日志。**只给本地玩家**（`combatToLocal`）—— 反应是本地表现，
+ * 而且每个客户端都在跑同一份 Lua，不加收件人限制反而会串屏。
+ *
+ * 三个数一个都不能少（`todo §2.2.3` 明确要求）：
+ *   - **反应名** —— 「触发了什么」；
+ *   - **消耗元素量** —— 「为什么附着变短了/没了」，调衰减与消耗比时唯一的读数；
+ *   - **伤害数值** —— 这一段走完乘区后的量，用来验「蒸发是不是真的 ×2」。
+ */
+function DamagePipeline_logReaction(
+  id: ReactionId,
+  consumed: number | undefined,
+  amount: number,
+  shieldMultiplier?: number,
+  fromShield: boolean = false
+): void {
+  const def = REACTION_TABLE[id];
+  if (def === undefined) {
+    return;
+  }
+  if (fromShield) {
+    const cost = shieldMultiplier === undefined ? "" : " 盾耗倍率 " + shieldMultiplier.toFixed(2);
+    ChatBoxUI.combatToLocal("护盾触发「" + def.name + "」" + cost + " 来袭伤害 " + amount.toFixed(1));
+    return;
+  }
+  const consumedText = consumed === undefined ? "?" : consumed.toFixed(1);
+  ChatBoxUI.combatToLocal(
+    "触发「" + def.name + "」 消耗 " + consumedText + "U 伤害 " + amount.toFixed(1)
+  );
 }
 
 /**
@@ -410,31 +681,26 @@ function DamagePipeline_makeDealer(
   critRoll: number
 ): DamageDealer {
   return {
-    add: (element: ElementId, base: number, canCrit?: boolean): void => {
-      const r = dealRaw(
-        {
-          base,
-          element,
-          // D 阶段的元素反应会在这里传 "amplify" / "transform"；本轮恒 "none"
-          kind: "none",
-          // 不传 = 能暴击。用 `!== false` 而不是 `?? true`：tstl 对 `??` 的支持
-          // 在本仓库没验证过，而这里不值得赌。
-          canCrit: canCrit !== false,
-          critRoll,
-          effectiveResist: effectiveElementResist(stats, element),
-        },
-        stats
-      );
-      ctx.hits.push({
+    add: (element: ElementId, base: number, canCrit?: boolean, gauge?: number): void => {
+      // 不传 = 能暴击。用 `!== false` 而不是 `?? true`：tstl 对 `??` 的支持
+      // 在本仓库没验证过，而这里不值得赌。
+      const canCritResolved = canCrit !== false;
+      // 不传 = 1U。同样不用 `??`。
+      const gaugeResolved = gauge === undefined ? 1 : gauge;
+
+      // 走 `dealElemental` 而不是裸 `dealRaw`：**遗物加的元素伤害也要能触发反应**
+      // （`elementalEmber` 的火伤附着 + 蒸发就是靠这条）。反应判定每发每元素只跑一次，
+      // 由 `ctx.reactionMemo` 去重 —— 一件遗物连加两次火不会把附着扣两遍。
+      DamagePipeline_dealElemental(
+        ctx,
+        stats,
+        critRoll,
         element,
         base,
-        amount: r.amount,
-        isCrit: r.isCrit,
-        source: "relic",
-      });
-      if (r.isCrit) {
-        ctx.isCrit = true;
-      }
+        gaugeResolved,
+        canCritResolved,
+        "relic"
+      );
     },
   };
 }
@@ -451,15 +717,20 @@ function DamagePipeline_targetArmor(ctx: DamageContext): number {
 /**
  * 这个属性该从**受击方**读还是**攻击方**读。
  *
- * 八个元素抗性 + 全局免伤是**受击方**的（谁挨打谁减免）；
+ * 八个元素抗性 + 八个元素易伤 + 全局免伤是**受击方**的（谁挨打谁减免 / 谁挨打谁更疼）；
  * 其余（元素加成、暴击、擢升、护甲穿透、元素穿透…）全是**攻击方**的。
+ *
+ * ⚠️ **元素易伤那一块漏在这里 = 静默无效**：它会被当成攻方属性，于是永远读到 0，
+ * 挂再多 `QuickenBuff` 游戏里也一点变化都没有，不崩、不报错。加元素属性块时
+ * 这一行要跟着改。
  *
  * 这一层是必需的：`deal()` 只收一个 `stats`，但真实战斗里两边的属性**不是同一张表**。
  */
 function DamagePipeline_isDefensiveStat(s: StatId): boolean {
   return (
     s === StatType.DAMAGE_REDUCTION ||
-    (s >= ELEM_RES_BASE && s < ELEM_RES_BASE + ELEMENT_COUNT)
+    (s >= ELEM_RES_BASE && s < ELEM_RES_BASE + ELEMENT_COUNT) ||
+    (s >= ELEM_VULN_BASE && s < ELEM_VULN_BASE + ELEMENT_COUNT)
   );
 }
 
@@ -549,7 +820,15 @@ function DamagePipeline_log(ctx: DamageContext): void {
 }
 
 /**
- * 把各段拼成 `physical 45.5 + fire 20.0`。
+ * 把各段拼成 `physical 45.5 + fire 200.0[vaporize_water_on_fire]`。
+ *
+ * **段名是排查「施法载荷认没认领上」唯一的读数**：技能伤害认领成功时第一段是
+ * `fire` / `water`，认领失败则退化成未分类的 `physical`（见
+ * `DamagePipeline_addNonPhysicalNative`）。两者的伤害数字可能差不多，
+ * 光看血条分不出来。
+ *
+ * `[...]` 里是这一段吃到的反应 id（没有反应就不带方括号）—— 与 `火灾 / 蒸发`
+ * 的中文名分开写，是为了让日志里能直接 grep 到稳定的 id。
  *
  * 用 `push` + `join` 而不是 `reduce`/长 `+` 链：Lua 5.3.6 的 C-level 调用上限是 200，
  * 而且手写 `+` 链在段数变多时会把加载链顶穿（memory `wc3-lua53-ccalls-limit`）。
@@ -558,9 +837,11 @@ function DamagePipeline_hitsText(ctx: DamageContext): string {
   const parts: string[] = [];
   for (let i = 0; i < ctx.hits.length; i++) {
     const h = ctx.hits[i];
-    if (h !== undefined) {
-      parts.push(h.element + " " + h.amount.toFixed(1));
+    if (h === undefined) {
+      continue;
     }
+    const tag = h.reactionId === undefined ? "" : "[" + h.reactionId + "]";
+    parts.push(h.element + " " + h.amount.toFixed(1) + tag);
   }
   return parts.join(" + ");
 }
